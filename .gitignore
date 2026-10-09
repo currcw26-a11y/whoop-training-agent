@@ -1,0 +1,15 @@
+# --- Secrets: NEVER put these on GitHub ---
+.streamlit/secrets.toml
+.env
+
+# --- Python's virtual environment and cache files (big, and rebuilt automatically) ---
+.venv/
+__pycache__/
+*.pyc
+
+# --- Editor and computer clutter ---
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
