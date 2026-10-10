@@ -1,0 +1,40 @@
+# config.toml: the website's look (colors, font, rounded corners).
+# Streamlit reads this automatically. Light and dark mode each get their own
+# colors, and the chart colors were checked to be colorblind-safe in both.
+
+[theme]
+font = "system-ui, -apple-system, 'Segoe UI', sans-serif"
+headingFont = "system-ui, -apple-system, 'Segoe UI', sans-serif"
+baseRadius = "0.6rem"
+# Status colors (used for success/warning/error boxes and the arrows on number tiles)
+greenColor = "#0ca30c"
+yellowColor = "#fab219"
+orangeColor = "#ec835a"
+redColor = "#d03b3b"
+chartSequentialColors = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#3987e5", "#2a78d6", "#256abf", "#184f95", "#0d366b"]
+
+[theme.light]
+primaryColor = "#2a78d6"
+blueColor = "#2a78d6"
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f3f2ef"
+textColor = "#0b0b0b"
+borderColor = "#e1e0d9"
+dataframeBorderColor = "#e1e0d9"
+chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
+
+[theme.light.sidebar]
+backgroundColor = "#f3f2ef"
+
+[theme.dark]
+primaryColor = "#3987e5"
+blueColor = "#3987e5"
+backgroundColor = "#1a1a19"
+secondaryBackgroundColor = "#242423"
+textColor = "#ffffff"
+borderColor = "#383835"
+dataframeBorderColor = "#383835"
+chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]
+
+[theme.dark.sidebar]
+backgroundColor = "#141413"

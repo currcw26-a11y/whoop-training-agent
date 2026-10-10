@@ -20,6 +20,16 @@ CONDITIONS = {
 }
 
 
+def icon(sky):
+    """An emoji for a sky description like "light rain"."""
+    for words, emoji in [("thunder", "⛈️"), ("snow", "❄️"), ("freezing", "🧊"), ("rain", "🌧️"), ("shower", "🌧️"),
+                         ("drizzle", "🌦️"), ("fog", "🌫️"), ("partly", "⛅"), ("mostly clear", "🌤️"),
+                         ("cloudy", "☁️"), ("clear", "☀️")]:
+        if words in sky:
+            return emoji
+    return "🌡️"
+
+
 def _round(value):
     return None if value is None else round(value)
 

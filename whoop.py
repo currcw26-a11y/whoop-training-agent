@@ -92,8 +92,14 @@ def _download(token, path, start):
         params["nextToken"] = page["next_token"]
 
 
-def sync(email, days=14):
-    """Download the last `days` days from WHOOP and save them. Returns how many days were saved."""
+def sync(email, days=None):
+    """Download recent WHOOP data and save it. Returns how many days were saved.
+
+    The first time, it gets 90 days so the charts have history. After that,
+    the last 14 days is enough (older days don't change).
+    """
+    if days is None:
+        days = 14 if len(db.get_daily_metrics(email, days=60)) >= 30 else 90
     token = _access_token(email)
     start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 

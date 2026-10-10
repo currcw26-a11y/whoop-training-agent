@@ -56,7 +56,10 @@ and click Run (one time only).
 | File | What it does |
 |---|---|
 | `app.py` | Starts the website and lists its pages |
-| `home.py` | The main page: sign in, connect WHOOP, coaching profile, "Plan my day", your numbers |
+| `home.py` | The main page: today's numbers, the coach, this week's plan, and charts |
+| `settings.py` | The "Coaching profile" page: goal, city, run times, connections |
+| `charts.py` | Every chart and insight on the dashboard (built with Altair) |
+| `ui.py` | Small display helpers, like showing the agent's steps |
 | `agent.py` | The AI coach: its instructions, its tools, and the tool-use loop |
 | `config.py` | Settings: which Claude model, step limit, daily run limits, prices |
 | `weather.py` | City lookup and forecast from Open-Meteo |
@@ -64,12 +67,14 @@ and click Run (one time only).
 | `whoop.py` | Connects to WHOOP and downloads your data |
 | `db.py` | Reads and writes the database (encrypts login tokens) |
 | `schema.sql` | Creates the database tables |
+| `.streamlit/config.toml` | The look: colors for light and dark mode, font, rounded corners |
 
 ## Build progress
 
 - [x] Phase 0: Setup
 - [x] Phase 1: Google sign-in, WHOOP, and the database
 - [x] Phase 2: The agent (weather + Claude tool loop + "Plan my day")
+- [x] Design pass: dashboard, charts, insights, light and dark mode
 - [ ] Phase 3: Google Calendar (asks for approval before adding events)
 - [ ] Phase 4: Deploy to Streamlit Community Cloud
 - [ ] Phase 5: Screen Time
