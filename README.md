@@ -48,10 +48,24 @@ Secrets (API keys) go in `.streamlit/secrets.toml`. Copy
 `.streamlit/secrets.toml.example`, then fill in real values. The real file is
 in `.gitignore`, so it never goes to GitHub.
 
+The database tables come from `schema.sql`. Paste it into Supabase's SQL Editor
+and click Run (one time only).
+
+## Files
+
+| File | What it does |
+|---|---|
+| `app.py` | Starts the website and lists its pages |
+| `home.py` | The main page: sign in, connect WHOOP, see your numbers |
+| `privacy.py` | Privacy policy and "Delete my data" |
+| `whoop.py` | Connects to WHOOP and downloads your data |
+| `db.py` | Reads and writes the database (encrypts login tokens) |
+| `schema.sql` | Creates the database tables |
+
 ## Build progress
 
 - [x] Phase 0: Setup
-- [ ] Phase 1: Google sign-in, WHOOP, and the database
+- [x] Phase 1: Google sign-in, WHOOP, and the database
 - [ ] Phase 2: The agent (weather + Claude tool loop + "Plan my day")
 - [ ] Phase 3: Google Calendar (asks for approval before adding events)
 - [ ] Phase 4: Deploy to Streamlit Community Cloud
