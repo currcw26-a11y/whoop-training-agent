@@ -100,6 +100,39 @@ create table if not exists screen_time (
   primary key (email, date)
 );
 
+-- ===================== Added in Phase 2 =====================
+-- If you ran this file before, just run the WHOLE file again. Everything above
+-- is skipped because it already exists, and these lines add the new columns.
+
+-- More about each person, so the coach can plan for them.
+alter table profiles add column if not exists experience text;      -- what they do now, in their words
+alter table profiles add column if not exists goal_date date;       -- optional race / goal date
+alter table profiles add column if not exists place_name text;      -- city we found, like "Winston-Salem, North Carolina, US"
+
+-- More WHOOP numbers per day (things the WHOOP API sends that we didn't save before).
+alter table daily_metrics add column if not exists deep_sleep_hours double precision;
+alter table daily_metrics add column if not exists rem_sleep_hours double precision;
+alter table daily_metrics add column if not exists light_sleep_hours double precision;
+alter table daily_metrics add column if not exists awake_hours double precision;
+alter table daily_metrics add column if not exists sleep_need_hours double precision;   -- how much sleep WHOOP says you needed
+alter table daily_metrics add column if not exists sleep_debt_hours double precision;
+alter table daily_metrics add column if not exists sleep_efficiency int;                -- % of time in bed actually asleep
+alter table daily_metrics add column if not exists sleep_consistency int;               -- % how regular your sleep times are
+alter table daily_metrics add column if not exists respiratory_rate double precision;   -- breaths per minute
+alter table daily_metrics add column if not exists disturbances int;
+alter table daily_metrics add column if not exists sleep_start timestamptz;             -- when you fell asleep
+alter table daily_metrics add column if not exists sleep_end timestamptz;               -- when you woke up
+alter table daily_metrics add column if not exists spo2 double precision;               -- blood oxygen %
+alter table daily_metrics add column if not exists skin_temp_c double precision;
+alter table daily_metrics add column if not exists calories int;
+alter table daily_metrics add column if not exists avg_hr int;
+alter table daily_metrics add column if not exists max_hr int;
+alter table daily_metrics add column if not exists steps int;
+
+alter table workouts add column if not exists max_hr int;
+alter table workouts add column if not exists calories int;
+alter table workouts add column if not exists zone_minutes jsonb;   -- minutes in heart-rate zones 0-5, like [3, 10, 12, 5, 1, 0]
+
 -- SECURITY: turn on Row Level Security and add NO policies.
 -- That means the public (publishable) key can't read or change anything.
 -- Only the website's server, which uses the secret key, can get in.

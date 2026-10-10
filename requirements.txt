@@ -7,3 +7,4 @@ supabase==2.32.0          # reads and writes the database
 anthropic==1.12.1         # talks to Claude (the brain of the agent)
 requests==2.34.2          # calls the WHOOP, Google Calendar, and weather websites
 cryptography==50.0.2      # scrambles people's login tokens before they're saved
+tzdata==2026.5            # time zone info, so "today" is right wherever each person lives

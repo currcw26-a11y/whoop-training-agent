@@ -116,6 +116,11 @@ def _round(value, digits=None):
     return None if value is None else round(value, digits)
 
 
+def _hours(milliseconds):
+    """WHOOP measures time in milliseconds. Turn that into hours (like 7.25)."""
+    return None if milliseconds is None else round(milliseconds / 3_600_000, 2)
+
+
 def _local_date(utc_time, offset):
     """WHOOP gives times in UTC plus the person's offset (like "-05:00").
     Return the date where they are, like "2026-10-09"."""
@@ -150,17 +155,44 @@ def build_rows(email, recoveries, sleeps, cycles, workouts):
             + stages.get("total_slow_wave_sleep_time_milli", 0)
             + stages.get("total_rem_sleep_time_milli", 0)
         )
-        cycle_score = (cycles_by_id.get(recovery["cycle_id"]) or {}).get("score") or {}
+        # WHOOP's "sleep needed" is a baseline plus extra for sleep debt and
+        # recent strain, minus any naps. Adding the parts gives the total.
+        needed = sleep_score.get("sleep_needed") or {}
+        need_ms = sum(value or 0 for value in needed.values()) if needed else None
+        cycle = cycles_by_id.get(recovery["cycle_id"]) or {}
+        cycle_score = cycle.get("score") or {}
+        kilojoules = cycle_score.get("kilojoule")
 
         days[day] = {
             "email": email,
             "date": day,
+            # Recovery
             "recovery_score": _round(score.get("recovery_score")),
             "hrv_ms": _round(score.get("hrv_rmssd_milli"), 1),
             "resting_hr": _round(score.get("resting_heart_rate")),
+            "spo2": _round(score.get("spo2_percentage"), 1),
+            "skin_temp_c": _round(score.get("skin_temp_celsius"), 1),
+            # Sleep
             "sleep_hours": round(asleep_ms / 3_600_000, 1) if asleep_ms else None,
             "sleep_performance": _round(sleep_score.get("sleep_performance_percentage")),
+            "sleep_efficiency": _round(sleep_score.get("sleep_efficiency_percentage")),
+            "sleep_consistency": _round(sleep_score.get("sleep_consistency_percentage")),
+            "deep_sleep_hours": _hours(stages.get("total_slow_wave_sleep_time_milli")),
+            "rem_sleep_hours": _hours(stages.get("total_rem_sleep_time_milli")),
+            "light_sleep_hours": _hours(stages.get("total_light_sleep_time_milli")),
+            "awake_hours": _hours(stages.get("total_awake_time_milli")),
+            "sleep_need_hours": _hours(need_ms),
+            "sleep_debt_hours": _hours(needed.get("need_from_sleep_debt_milli")),
+            "respiratory_rate": _round(sleep_score.get("respiratory_rate"), 1),
+            "disturbances": stages.get("disturbance_count"),
+            "sleep_start": sleep["start"],
+            "sleep_end": sleep["end"],
+            # Strain (the whole WHOOP day)
             "day_strain": _round(cycle_score.get("strain"), 1),
+            "calories": round(kilojoules / 4.184) if kilojoules else None,  # 1 food calorie = 4.184 kJ
+            "avg_hr": _round(cycle_score.get("average_heart_rate")),
+            "max_hr": _round(cycle_score.get("max_heart_rate")),
+            "steps": cycle.get("step_count"),
         }
 
     workout_rows = []
@@ -170,6 +202,9 @@ def build_rows(email, recoveries, sleeps, cycles, workouts):
         score = workout.get("score") or {}
         seconds = (datetime.fromisoformat(workout["end"]) - datetime.fromisoformat(workout["start"])).total_seconds()
         meters = score.get("distance_meter")
+        kilojoules = score.get("kilojoule")
+        zones = score.get("zone_durations") or {}
+        zone_names = ["zero", "one", "two", "three", "four", "five"]
         workout_rows.append({
             "id": workout["id"],
             "email": email,
@@ -179,6 +214,11 @@ def build_rows(email, recoveries, sleeps, cycles, workouts):
             "strain": _round(score.get("strain"), 1),
             "distance_miles": round(meters / 1609.344, 2) if meters else None,
             "avg_hr": _round(score.get("average_heart_rate")),
+            "max_hr": _round(score.get("max_heart_rate")),
+            "calories": round(kilojoules / 4.184) if kilojoules else None,
+            # Minutes spent in each heart-rate zone, from zone 0 (resting) to zone 5 (all-out).
+            "zone_minutes": [round((zones.get(f"zone_{name}_milli") or 0) / 60_000, 1) for name in zone_names]
+            if zones else None,
         })
 
     return list(days.values()), workout_rows

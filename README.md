@@ -56,7 +56,10 @@ and click Run (one time only).
 | File | What it does |
 |---|---|
 | `app.py` | Starts the website and lists its pages |
-| `home.py` | The main page: sign in, connect WHOOP, see your numbers |
+| `home.py` | The main page: sign in, connect WHOOP, coaching profile, "Plan my day", your numbers |
+| `agent.py` | The AI coach: its instructions, its tools, and the tool-use loop |
+| `config.py` | Settings: which Claude model, step limit, daily run limits, prices |
+| `weather.py` | City lookup and forecast from Open-Meteo |
 | `privacy.py` | Privacy policy and "Delete my data" |
 | `whoop.py` | Connects to WHOOP and downloads your data |
 | `db.py` | Reads and writes the database (encrypts login tokens) |
@@ -66,7 +69,7 @@ and click Run (one time only).
 
 - [x] Phase 0: Setup
 - [x] Phase 1: Google sign-in, WHOOP, and the database
-- [ ] Phase 2: The agent (weather + Claude tool loop + "Plan my day")
+- [x] Phase 2: The agent (weather + Claude tool loop + "Plan my day")
 - [ ] Phase 3: Google Calendar (asks for approval before adding events)
 - [ ] Phase 4: Deploy to Streamlit Community Cloud
 - [ ] Phase 5: Screen Time

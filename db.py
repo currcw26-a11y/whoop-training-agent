@@ -45,6 +45,11 @@ def get_profile(email):
     return rows[0] if rows else None
 
 
+def update_profile(email, changes):
+    """Save changes to the person's coaching profile (goal, city, ...)."""
+    _client().table("profiles").update(changes).eq("email", email).execute()
+
+
 def mark_whoop_synced(email):
     _client().table("profiles").update({"whoop_synced_at": _now().isoformat()}).eq("email", email).execute()
 
@@ -155,3 +160,60 @@ def get_workouts(email, days=30):
         .eq("email", email).gte("date", since)
         .order("date", desc=True).execute().data
     )
+
+
+def set_weather_summary(email, day, summary):
+    _client().table("daily_metrics").update({"weather_summary": summary}).eq("email", email).eq("date", day).execute()
+
+
+# ---------- Training plan ----------
+
+def get_plan(email, first_day, last_day):
+    """Training plan rows between two dates (like "2026-10-10"), both included, oldest first."""
+    return (
+        _client().table("training_plan").select("*")
+        .eq("email", email).gte("date", first_day).lte("date", last_day)
+        .order("date").execute().data
+    )
+
+
+def save_planned_workouts(rows):
+    """Save planned workouts. Each row: email, date, planned_workout. A date that's already planned gets replaced."""
+    if rows:
+        _client().table("training_plan").upsert(rows).execute()
+
+
+def save_decision(email, day, workout, reason):
+    """Save what the coach decided for one day, and why. The originally planned workout is kept."""
+    _client().table("training_plan").upsert({
+        "email": email, "date": day, "adjusted_workout": workout, "reason": reason,
+    }).execute()
+
+
+# ---------- Agent runs ----------
+
+def save_agent_run(email, model, steps, final_decision, cost_usd):
+    _client().table("agent_runs").insert({
+        "email": email,
+        "model": model,
+        "steps": steps,
+        "final_decision": final_decision,
+        "cost_usd": round(cost_usd, 5),
+    }).execute()
+
+
+def latest_agent_run(email):
+    rows = (
+        _client().table("agent_runs").select("*").eq("email", email)
+        .order("created_at", desc=True).limit(1).execute().data
+    )
+    return rows[0] if rows else None
+
+
+def count_agent_runs(email=None):
+    """How many agent runs in the last 24 hours, for one person (or everyone if email is None)."""
+    since = (_now() - timedelta(days=1)).isoformat()
+    query = _client().table("agent_runs").select("id", count="exact").gte("created_at", since)
+    if email:
+        query = query.eq("email", email)
+    return query.limit(1).execute().count
