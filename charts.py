@@ -26,6 +26,8 @@ EFFORT_COLORS = ["#86b6ef", "#2a78d6", "#184f95"]
 SLEEP_STAGES = {"deep_sleep_hours": "Deep", "rem_sleep_hours": "REM", "light_sleep_hours": "Light", "awake_hours": "Awake"}
 
 MUTED = "#898781"  # a gray that's readable in both light and dark mode
+# Legends sit above the chart, with room between items so labels never overlap.
+LEGEND = alt.Legend(title=None, orient="top", columnPadding=24, symbolType="circle", labelLimit=0)
 DATE = alt.Tooltip("date:T", title="Date", format="%a, %b %-d")
 
 
@@ -69,7 +71,7 @@ def recovery_chart(days):
         x=_date_axis(),
         y=alt.Y("recovery_score:Q", title="Recovery %", scale=alt.Scale(domain=[0, 100])),
         color=alt.Color("zone:N", scale=alt.Scale(domain=ZONES, range=[GREEN, YELLOW, RED]),
-                        legend=alt.Legend(title=None, orient="top")),
+                        legend=LEGEND),
         tooltip=[DATE, alt.Tooltip("recovery_score:Q", title="Recovery %"), alt.Tooltip("zone:N", title="Zone")],
     ).properties(height=240)
 
@@ -136,7 +138,7 @@ def sleep_chart(days):
         x=_date_axis(),
         y=alt.Y("sum(hours):Q", title="Hours"),
         color=alt.Color("stage:N", scale=alt.Scale(domain=list(SLEEP_STAGES.values())),
-                        legend=alt.Legend(title=None, orient="top")),
+                        legend=LEGEND),
         order=alt.Order("order:Q"),
         tooltip=[DATE, alt.Tooltip("stage:N", title="Stage"), alt.Tooltip("hours:Q", title="Hours", format=".1f")],
     )
@@ -245,7 +247,7 @@ def effort_chart(workouts, today, weeks):
         x=alt.X("week:N", sort=[_week_label(m) for m in mondays], title="Week starting", axis=alt.Axis(labelAngle=0)),
         y=alt.Y("sum(minutes):Q", title="Minutes"),
         color=alt.Color("level:N", scale=alt.Scale(domain=EFFORT_LEVELS, range=EFFORT_COLORS),
-                        legend=alt.Legend(title=None, orient="top")),
+                        legend=LEGEND),
         order=alt.Order("order:Q"),
         tooltip=[alt.Tooltip("week:N", title="Week starting"), alt.Tooltip("level:N", title="Effort"),
                  alt.Tooltip("minutes:Q", title="Minutes")],
@@ -306,7 +308,7 @@ def weekday_chart(days):
 
 def insights(days, workouts, time_zone):
     """Plain-English findings from the person's own data.
-    Returns a list of (title, headline, explanation). Each needs enough data to be fair."""
+    Returns a list of (icon, title, headline, explanation). Each needs enough data to be fair."""
     found = []
     mornings = days.dropna(subset=["recovery_score"]).sort_values("date")
 
@@ -315,7 +317,7 @@ def insights(days, workouts, time_zone):
     short_nights = mornings[mornings["sleep_hours"] < 7]["recovery_score"]
     if len(long_nights) >= 3 and len(short_nights) >= 3:
         found.append((
-            "😴 Sleep and recovery",
+            "bedtime", "Sleep and recovery",
             f"{long_nights.mean():.0f}% vs {short_nights.mean():.0f}%",
             f"Your average recovery after 7+ hours of sleep ({len(long_nights)} nights), "
             f"compared with shorter nights ({len(short_nights)} nights).",
@@ -328,7 +330,7 @@ def insights(days, workouts, time_zone):
     late = mornings[~mornings["sleep_start"].map(before_midnight) & mornings["sleep_start"].notna()]["recovery_score"]
     if len(early) >= 3 and len(late) >= 3:
         found.append((
-            "🌙 Bedtime",
+            "dark_mode", "Bedtime",
             f"{early.mean():.0f}% vs {late.mean():.0f}%",
             f"Your average recovery when you fell asleep before midnight ({len(early)} nights), "
             f"compared with after midnight ({len(late)} nights).",
@@ -344,7 +346,7 @@ def insights(days, workouts, time_zone):
         (after_hard if day["day_strain"] >= 14 else after_easy).append(next_morning)
     if len(after_hard) >= 2 and len(after_easy) >= 3:
         found.append((
-            "🔥 After hard days",
+            "local_fire_department", "After hard days",
             f"{sum(after_hard) / len(after_hard):.0f}% vs {sum(after_easy) / len(after_easy):.0f}%",
             f"Your recovery the morning after a day with strain of 14 or more ({len(after_hard)} times), "
             f"compared with after easier days.",
@@ -358,7 +360,7 @@ def insights(days, workouts, time_zone):
             hard += zones[3] + zones[4] + zones[5]
     if easy + hard >= 60:
         found.append((
-            "🏃 Easy vs hard training",
+            "directions_run", "Easy vs hard training",
             f"{100 * easy / (easy + hard):.0f}% easy",
             "Share of your workout time in heart-rate zones 1-2. Many coaches suggest about 80% easy, "
             "20% moderate or hard.",
@@ -370,7 +372,7 @@ def insights(days, workouts, time_zone):
         recent, before = hrv.tail(7)["hrv_ms"].mean(), hrv.iloc[:-7]["hrv_ms"].mean()
         change = 100 * (recent - before) / before
         found.append((
-            "💚 HRV trend",
+            "monitor_heart", "HRV trend",
             f"{change:+.0f}%",
             f"Your average HRV over the last 7 days ({recent:.0f} ms) compared with before that ({before:.0f} ms). "
             "Rising HRV usually means you're adapting well.",

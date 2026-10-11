@@ -21,13 +21,14 @@ CONDITIONS = {
 
 
 def icon(sky):
-    """An emoji for a sky description like "light rain"."""
-    for words, emoji in [("thunder", "⛈️"), ("snow", "❄️"), ("freezing", "🧊"), ("rain", "🌧️"), ("shower", "🌧️"),
-                         ("drizzle", "🌦️"), ("fog", "🌫️"), ("partly", "⛅"), ("mostly clear", "🌤️"),
-                         ("cloudy", "☁️"), ("clear", "☀️")]:
+    """The Material Symbols icon name for a sky description like "light rain"."""
+    for words, name in [("thunder", "thunderstorm"), ("snow", "weather_snowy"), ("freezing", "ac_unit"),
+                        ("rain", "rainy"), ("shower", "rainy"), ("drizzle", "rainy"), ("fog", "foggy"),
+                        ("partly", "partly_cloudy_day"), ("mostly clear", "partly_cloudy_day"),
+                        ("cloudy", "cloud"), ("clear", "sunny")]:
         if words in sky:
-            return emoji
-    return "🌡️"
+            return name
+    return "thermostat"
 
 
 def _round(value):

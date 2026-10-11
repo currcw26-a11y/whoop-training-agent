@@ -16,7 +16,8 @@ RUN_TIMES = ["Early morning (6-9am)", "Late morning (9am-12pm)", "Midday (12-3pm
 email = st.user.email
 profile = db.get_profile(email)
 
-st.title("⚙️ Coaching profile")
+ui.label("Settings", "tune", "settings")
+st.title("Coaching profile")
 st.caption("The coach reads this every time you press Plan my day.")
 
 with st.form("profile"):
@@ -59,21 +60,21 @@ with st.form("profile"):
 if profile["place_name"]:
     st.caption(f"Weather location: {profile['place_name']} · time zone: {profile['timezone']}")
 
-st.subheader("Connections")
-with st.container(border=True):
+ui.label("Connections", "link", "connections")
+with st.container(key="card-whoop-link"):
     left, right = st.columns([3, 1], vertical_alignment="center")
     if db.is_connected(email, "whoop"):
-        left.markdown(f"⌚ **WHOOP** · connected · last download {ui.time_ago(profile['whoop_synced_at'])}")
-        if right.button("Disconnect"):
+        left.markdown(f":material/watch: **WHOOP** · connected · last download {ui.time_ago(profile['whoop_synced_at'])}")
+        if right.button("Disconnect", icon=":material/link_off:"):
             db.delete_tokens(email, "whoop")
             st.rerun()
     else:
-        left.markdown("⌚ **WHOOP** · not connected")
+        left.markdown(":material/watch: **WHOOP** · not connected")
         right.page_link("home.py", label="Connect")
-with st.container(border=True):
-    st.markdown("📆 **Google Calendar** · coming soon")
+with st.container(key="card-calendar-link"):
+    st.markdown(":material/calendar_month: **Google Calendar** · coming soon")
 
-if db.is_connected(email, "whoop") and st.button("Download 90 days of WHOOP history"):
+if db.is_connected(email, "whoop") and st.button("Download 90 days of WHOOP history", icon=":material/download:"):
     try:
         with st.spinner("Downloading from WHOOP..."):
             saved = whoop.sync(email, days=90)

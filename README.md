@@ -67,7 +67,8 @@ and click Run (one time only).
 | `whoop.py` | Connects to WHOOP and downloads your data |
 | `db.py` | Reads and writes the database (encrypts login tokens) |
 | `schema.sql` | Creates the database tables |
-| `.streamlit/config.toml` | The look: colors for light and dark mode, font, rounded corners |
+| `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font, rounded corners |
+| `style.css` | Extra styling: cards, section labels, the recovery ring, the week plan |
 
 ## Build progress
 

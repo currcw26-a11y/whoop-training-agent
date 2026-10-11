@@ -1,0 +1,115 @@
+/* style.css: extra polish on top of the theme in .streamlit/config.toml.
+ *
+ * How it finds things: every container we create with key="card-..." gets a
+ * CSS class "st-key-card-...", and our own HTML pieces (the recovery ring and
+ * the week plan) use the class names below.
+ * Colors are see-through grays, so the same rules work in light and dark mode.
+ */
+
+:root {
+  --card-bg: rgba(127, 127, 127, 0.06);
+  --card-border: rgba(127, 127, 127, 0.18);
+  --accent: #3987e5;
+}
+
+/* ---------- Page ---------- */
+[data-testid="stMainBlockContainer"] { max-width: 1180px; padding-top: 2.2rem; }
+header[data-testid="stHeader"] { background: transparent; }
+h1 { letter-spacing: -0.035em; font-size: 2.35rem !important; }
+h2, h3, h4 { letter-spacing: -0.02em; }
+
+/* ---------- Cards: containers with key="card-..." ---------- */
+[class*="st-key-card"] {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 1.35rem 1.5rem;
+}
+
+/* Number tiles get the same card look. */
+[data-testid="stMetric"] { padding: 0.15rem 0.1rem; }
+[data-testid="stMetricLabel"] p { font-weight: 500; opacity: 0.75; }
+
+/* ---------- Small uppercase labels: containers with key="label-..." ---------- */
+[class*="st-key-label"] p {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin: 0;
+}
+[class*="st-key-label"] [data-testid="stIconMaterial"] { text-transform: none; font-size: 1.05rem; }
+[class*="st-key-meta"] p { text-align: right; }
+
+/* ---------- Header ---------- */
+.weather-row { display: flex; justify-content: flex-end; }
+.weather {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  padding: 0.5rem 0.95rem; border-radius: 999px;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  font-size: 0.92rem;
+}
+.weather .temp { font-weight: 650; }
+.weather .note { opacity: 0.65; }
+
+/* ---------- Recovery ring ---------- */
+.ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+.ring { position: relative; width: 150px; height: 150px; display: grid; place-items: center; }
+/* The colored arc: a pie slice (conic-gradient) with its middle cut out (mask), leaving a 12px ring. */
+.ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(127, 127, 127, 0.15) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+}
+.ring-center { text-align: center; }
+.ring-num { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+.ring-cap { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.14em; opacity: 0.55; margin-top: 0.35rem; }
+.zone { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; }
+.zone .dot { width: 10px; height: 10px; border-radius: 50%; }
+.zone-note { opacity: 0.65; font-size: 0.9rem; text-align: center; }
+
+/* ---------- Coach card ---------- */
+.headline { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; }
+.subhead { opacity: 0.65; margin-top: 0.25rem; font-size: 1rem; }
+.st-key-card-coach [data-testid="stExpander"] details { border-color: var(--card-border); }
+
+/* ---------- Week plan ---------- */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.65rem; }
+@media (max-width: 1000px) { .week { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.day {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
+  padding: 0.85rem 0.9rem 0.95rem; min-height: 172px;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.day.today { border-color: rgba(57, 135, 229, 0.85); background: rgba(57, 135, 229, 0.10); }
+.day-top { display: flex; justify-content: space-between; align-items: baseline; }
+.dow { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.6; }
+.num { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+.badge { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; margin: 0.35rem 0 0.2rem; }
+.badge.run, .badge.walk { background: rgba(57, 135, 229, 0.16); color: var(--accent); }
+.badge.cross { background: rgba(27, 175, 122, 0.16); color: #1baf7a; }
+.badge.rest, .badge.other { background: rgba(127, 127, 127, 0.14); }
+.day .title { font-weight: 600; line-height: 1.25; font-size: 0.95rem; }
+.day .detail { font-size: 0.8rem; opacity: 0.65; line-height: 1.35; }
+.day .changed {
+  margin-top: auto; padding-top: 0.35rem; font-size: 0.7rem; font-weight: 600; color: var(--accent);
+  display: flex; align-items: center; gap: 0.25rem;
+}
+
+/* Google's Material Symbols icons inside our own HTML (Streamlit already loads this font). */
+.msr {
+  font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal;
+  font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none;
+  display: inline-block; white-space: nowrap; direction: ltr;
+  font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
+}
+.changed .msr { font-size: 14px; }
+
+/* ---------- Welcome page ---------- */
+.st-key-card-feature-1 [data-testid="stIconMaterial"],
+.st-key-card-feature-2 [data-testid="stIconMaterial"],
+.st-key-card-feature-3 [data-testid="stIconMaterial"] { font-size: 1.9rem; color: var(--accent); }
+.lead { font-size: 1.15rem; opacity: 0.75; max-width: 640px; line-height: 1.55; }

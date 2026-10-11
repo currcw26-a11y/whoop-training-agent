@@ -2,10 +2,16 @@
 # Streamlit reads this automatically. Light and dark mode each get their own
 # colors, and the chart colors were checked to be colorblind-safe in both.
 
+[client]
+# Hide Streamlit's "Deploy" button and developer menu.
+toolbarMode = "minimal"
+
 [theme]
-font = "system-ui, -apple-system, 'Segoe UI', sans-serif"
-headingFont = "system-ui, -apple-system, 'Segoe UI', sans-serif"
-baseRadius = "0.6rem"
+# Inter, a clean modern font, loaded from Google Fonts (mentioned on the Privacy page).
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFontWeights = [700, 650, 600, 600, 600, 600]
+baseRadius = "0.75rem"
 # Status colors (used for success/warning/error boxes and the arrows on number tiles)
 greenColor = "#0ca30c"
 yellowColor = "#fab219"

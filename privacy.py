@@ -5,8 +5,10 @@
 import streamlit as st
 
 import db
+import ui
 
-st.title("🔒 Privacy")
+ui.label("Your data", "lock", "privacy")
+st.title("Privacy")
 
 st.markdown("""
 *Last updated October 9, 2026*
@@ -31,6 +33,7 @@ It gives training suggestions, **not medical advice**.
 ### How it's protected
 - It's stored in a database that only this website's server can open.
 - Your WHOOP and Google login tokens are encrypted before they're saved.
+- The site's font (Inter) loads from Google Fonts, so your browser contacts Google when a page opens.
 
 ### Deleting your data
 Sign in and use the button below. It permanently deletes everything this site has

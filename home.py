@@ -2,6 +2,7 @@
 #   Signed out -> what the site does, and "Sign in with Google".
 #   Signed in  -> 1. today's numbers  2. the coach  3. this week's plan  4. charts.
 # Everything on this page is read from the database. WHOOP data gets downloaded into it first.
+# The look comes from style.css (cards, labels, the ring) and .streamlit/config.toml (colors, font).
 
 import html
 from datetime import datetime, timedelta
@@ -25,7 +26,8 @@ def whoop_error(error):
     """Explain a failed WHOOP request in plain English."""
     st.error(
         f"WHOOP turned down the request (error {error.response.status_code}). "
-        "Try **Disconnect** on the Coaching profile page, then connect again."
+        "Try **Disconnect** on the Coaching profile page, then connect again.",
+        icon=":material/error:",
     )
 
 
@@ -34,7 +36,7 @@ def cached_forecast(latitude, longitude):
     return weather.forecast(latitude, longitude)
 
 
-def tile(spot, label, value, unit, compare, compare_text, history, digits=0, colors="normal"):
+def tile(spot, label, value, unit, compare, compare_text, history, digits=0, colors="normal", border=True):
     """A number tile: the value, how it compares (green/red arrow), and a small trend line.
     colors: "normal" (higher is better), "inverse" (lower is better), or "off" (neither)."""
     missing = value is None or pd.isna(value)
@@ -47,26 +49,29 @@ def tile(spot, label, value, unit, compare, compare_text, history, digits=0, col
     trend = [v for v in history if not pd.isna(v)]
     spot.metric(
         label, ui.show(None if missing else value, unit, digits), delta=delta, delta_color=colors, delta_arrow=arrow,
-        delta_description=compare_text if delta else None, chart_data=trend or None, border=True,
+        delta_description=compare_text if delta else None, chart_data=trend or None, border=border,
     )
 
 
 # ---------- Signed out: the welcome page ----------
 if not st.user.is_logged_in:
-    st.title("🏃 Training Coach")
-    st.markdown("#### An AI coach that plans your training around how your body is actually doing.")
-    features = st.columns(3)
-    for column, (icon, title, text) in zip(features, [
-        ("⌚", "Reads your WHOOP", "Recovery, heart rate variability, sleep stages, strain, and every workout."),
-        ("🌤️", "Checks the weather", "Finds a safe, comfortable time to train where you live."),
-        ("🧠", "Decides today's workout", "Keeps it, eases it, swaps days, or rests, and shows every step of its reasoning."),
-    ]):
-        with column.container(border=True):
-            st.markdown(f"### {icon}\n**{title}**")
+    ui.label("AI training coach", "directions_run", "welcome")
+    st.title("Train with your body, not against it.")
+    st.html("<p class='lead'>Training Coach reads your WHOOP recovery and sleep, checks the weather, and plans "
+            "each day's workout. Then it shows you exactly how it decided.</p>")
+    st.button("Sign in with Google", icon=":material/login:", type="primary", on_click=st.login)
+    st.write("")
+    for number, (column, (icon, title, text)) in enumerate(zip(st.columns(3, gap="medium"), [
+        ("watch", "Reads your WHOOP", "Recovery, heart rate variability, sleep stages, strain, and every workout."),
+        ("partly_cloudy_day", "Checks the weather", "Finds a safe, comfortable time to train where you live."),
+        ("psychology", "Decides today's workout", "Keeps it, eases it, swaps days, or rests, and shows every step."),
+    ]), start=1):
+        with column.container(key=f"card-feature-{number}"):
+            st.markdown(f":material/{icon}:")
+            st.markdown(f"**{title}**")
             st.caption(text)
-    st.button("Sign in with Google", type="primary", on_click=st.login)
     st.caption("Free · training suggestions only, not medical advice")
-    st.page_link("privacy.py", label="Privacy policy", icon="🔒")
+    st.page_link("privacy.py", label="Privacy policy", icon=":material/lock:")
     st.stop()
 
 email = st.user.email
@@ -81,30 +86,33 @@ if "state" in params:
     st.query_params.clear()  # tidy the address bar so this only happens once
     provider = db.use_oauth_state(email, params["state"])
     if provider != "whoop":
-        st.error("That connection link expired or wasn't yours. Please press **Connect WHOOP** again.")
+        st.error("That connection link expired or wasn't yours. Please press **Connect WHOOP** again.",
+                 icon=":material/error:")
     elif "code" not in params:
-        st.warning("WHOOP wasn't connected. You may have pressed Cancel.")
+        st.warning("WHOOP wasn't connected. You may have pressed Cancel.", icon=":material/warning:")
     else:
         try:
             whoop.finish_connecting(email, params["code"])
             with st.spinner("Connected! Downloading your last 90 days from WHOOP..."):
                 whoop.sync(email)
-            st.success("Your WHOOP is connected.")
+            st.success("Your WHOOP is connected.", icon=":material/check_circle:")
         except requests.HTTPError as error:
             whoop_error(error)
 
 
 # ---------- Connect WHOOP (first visit) ----------
 if not db.is_connected(email, "whoop"):
-    st.title(f"Welcome, {first_name} 👋")
-    with st.container(border=True):
-        st.markdown("#### Step 1: Connect your WHOOP")
+    st.title(f"Welcome, {first_name}")
+    with st.container(key="card-connect"):
+        ui.label("Step 1 of 2", "link", "connect")
+        st.markdown("#### Connect your WHOOP")
         st.write("The coach needs your recovery, sleep, strain, and workouts. WHOOP will ask you to approve this.")
         # A random one-time ticket. When WHOOP sends someone back, the ticket
         # has to match, which proves it's really you finishing the connection.
         if "whoop_state" not in st.session_state:
             st.session_state.whoop_state = db.new_oauth_state(email, "whoop")
-        st.link_button("Connect WHOOP", whoop.login_url(st.session_state.whoop_state), type="primary")
+        st.link_button("Connect WHOOP", whoop.login_url(st.session_state.whoop_state), type="primary",
+                       icon=":material/watch:")
         st.caption("WHOOP opens in a new tab. When you're done, the coach opens there and you can close this tab.")
     st.stop()
 
@@ -117,29 +125,30 @@ today = now.date()
 ready = bool(profile["goal"]) and profile["latitude"] is not None
 
 part_of_day = "morning" if now.hour < 12 else "afternoon" if now.hour < 18 else "evening"
-st.title(f"Good {part_of_day}, {first_name}")
-header = f"{now:%A, %B} {now.day}"
+greeting, weather_spot = st.columns([3, 2], vertical_alignment="bottom")
+with greeting:
+    ui.label(f"{now:%A, %B} {now.day}", "today", "date")
+    st.title(f"Good {part_of_day}, {first_name}")
 if profile["latitude"] is not None:
     try:
         sky = cached_forecast(profile["latitude"], profile["longitude"])["days"][0]
-        header += (f" · {weather.icon(sky['sky'])} {profile['city'] or profile['place_name']}: {sky['sky']}, "
-                   f"{sky['low_f']}–{sky['high_f']}°F, {sky['max_rain_chance_pct']}% chance of rain")
+        weather_spot.html(ui.weather_chip(sky, weather.icon(sky["sky"]), profile["city"] or profile["place_name"]))
     except requests.RequestException:
-        pass  # the weather line is a nice extra; skip it if Open-Meteo is down
-st.caption(header)
+        pass  # the weather pill is a nice extra; skip it if Open-Meteo is down
 
 if not ready:
-    with st.container(border=True):
+    with st.container(key="card-setup"):
         st.markdown("**Finish setting up:** tell the coach your goal and your city so it can plan for you.")
-        st.page_link("settings.py", label="Open your coaching profile", icon="⚙️")
+        st.page_link("settings.py", label="Open your coaching profile", icon=":material/tune:")
 
 
 # ---------- Load the WHOOP data (from the database) ----------
 days = pd.DataFrame(db.get_daily_metrics(email, days=90))
 workouts = pd.DataFrame(db.get_workouts(email, days=90))
 if days.empty:
-    st.info("No WHOOP data saved yet. (A brand-new WHOOP needs a few days before it scores you.)")
-    if st.button("🔄 Download my WHOOP data"):
+    st.info("No WHOOP data saved yet. (A brand-new WHOOP needs a few days before it scores you.)",
+            icon=":material/info:")
+    if st.button("Download my WHOOP data", icon=":material/sync:"):
         try:
             with st.spinner("Downloading from WHOOP..."):
                 whoop.sync(email)
@@ -163,121 +172,131 @@ def normal(column):
 
 
 # ---------- 1. Today ----------
-zone_label, zone_icon, advice = charts.zone(latest["recovery_score"])
+zone_label, _, advice = charts.zone(latest["recovery_score"])
+zone_color = {charts.ZONES[0]: charts.GREEN, charts.ZONES[1]: charts.YELLOW, charts.ZONES[2]: charts.RED}.get(
+    zone_label, "#898781")
 latest_day = "today" if latest["date"].date() == today else f"{latest['date']:%a, %b} {latest['date'].day}"
-with st.container(border=True):
-    hero, tiles = st.columns([1, 3], vertical_alignment="center", gap="large")
-    with hero:
-        st.caption(f"Recovery · {latest_day}")
-        st.markdown(
-            f"<div style='font-size:3.5rem;font-weight:650;line-height:1.1'>"
-            f"{ui.show(latest['recovery_score'], '%', 0)}</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(f"{zone_icon} **{(zone_label or '').split(' ')[0]}** · {advice}")
-    with tiles:
-        row = st.columns(4)
+with st.container(key="card-today"):
+    ring_spot, tiles_spot = st.columns([1, 3], vertical_alignment="center", gap="large")
+    ring_spot.html(ui.recovery_ring(latest["recovery_score"], zone_color, (zone_label or "No score").split(" (")[0],
+                                    advice, latest_day))
+    with tiles_spot:
+        row = st.columns(4, gap="medium")
         recent = days.tail(14)
-        tile(row[0], "HRV", latest["hrv_ms"], " ms", normal("hrv_ms"), "vs normal", recent["hrv_ms"])
-        tile(row[1], "Resting HR", latest["resting_hr"], " bpm", normal("resting_hr"), "vs normal",
-             recent["resting_hr"], colors="inverse")
-        tile(row[2], "Sleep", latest["sleep_hours"], " h", latest.get("sleep_need_hours"), "vs needed",
-             recent["sleep_hours"], digits=1)
-        tile(row[3], "Day strain", latest["day_strain"], "", normal("day_strain"), "vs average",
-             recent["day_strain"], digits=1, colors="off")
+        tile(row[0], ":material/monitor_heart: HRV", latest["hrv_ms"], " ms", normal("hrv_ms"), "vs normal",
+             recent["hrv_ms"], border=False)
+        tile(row[1], ":material/favorite: Resting HR", latest["resting_hr"], " bpm", normal("resting_hr"),
+             "vs normal", recent["resting_hr"], colors="inverse", border=False)
+        tile(row[2], ":material/bedtime: Sleep", latest["sleep_hours"], " h", latest.get("sleep_need_hours"),
+             "vs needed", recent["sleep_hours"], digits=1, border=False)
+        tile(row[3], ":material/local_fire_department: Strain", latest["day_strain"], "", normal("day_strain"),
+             "vs average", recent["day_strain"], digits=1, colors="off", border=False)
 
 
 # ---------- 2. The coach (the agent) ----------
-st.subheader("🧠 Your coach")
-card = st.container(border=True)  # filled in below, after the button, so a new plan shows right away
+st.write("")
+ui.label("Your coach", "psychology", "coach")
 runs_left = config.RUNS_PER_PERSON_PER_DAY - db.count_agent_runs(email)
 site_full = db.count_agent_runs() >= config.RUNS_PER_SITE_PER_DAY
-button_spot, note_spot = st.columns([1, 4], vertical_alignment="center")
-pressed = button_spot.button(
-    "✨ Plan my day", type="primary", width="stretch", disabled=not ready or runs_left <= 0 or site_full,
-)
+with st.container(key="card-coach"):
+    decision_spot = st.container()  # filled in below, after the button, so a new plan shows right away
+    button_spot, note_spot = st.columns([1, 3], vertical_alignment="center")
+    pressed = button_spot.button(
+        "Plan my day", icon=":material/auto_awesome:", type="primary", width="stretch",
+        disabled=not ready or runs_left <= 0 or site_full,
+    )
 
-# The agent ONLY runs when the button is pressed. Streamlit re-runs this whole
-# file on every click, so running it anywhere else would waste Claude credits.
-if pressed:
-    with st.status("The coach is working...", expanded=True) as status:
-        try:
-            result = agent.plan_my_day(email, ui.show_step)
-            runs_left -= 1
-            status.update(
-                label=f"Done · used {ui.tools_used(result['steps'])} tools · cost ${result['cost']:.4f}",
-                state="complete", expanded=False,
-            )
-        except anthropic.AuthenticationError:
-            status.update(label="Claude didn't accept the API key", state="error")
-            st.error("The `anthropic_api_key` in secrets.toml isn't valid.")
-        except anthropic.BadRequestError as error:
-            status.update(label="Claude couldn't run", state="error")
-            if "credit" in error.message.lower():
-                st.error("The Claude account is out of credits. Add more at console.anthropic.com.")
-            else:
-                st.error(f"Claude said the request was invalid: {error.message}")
-        except anthropic.RateLimitError:
-            status.update(label="Claude is busy", state="error")
-            st.error("Too many requests to Claude right now. Wait a minute and try again.")
-        except anthropic.APIConnectionError:
-            status.update(label="Couldn't reach Claude", state="error")
-            st.error("Couldn't connect to Claude. Check the internet connection and try again.")
-        except anthropic.APIStatusError as error:
-            status.update(label="Claude had a problem", state="error")
-            st.error(f"Claude returned an error ({error.status_code}). Try again in a minute.")
+    # The agent ONLY runs when the button is pressed. Streamlit re-runs this whole
+    # file on every click, so running it anywhere else would waste Claude credits.
+    if pressed:
+        with st.status("The coach is working...", expanded=True) as status:
+            try:
+                result = agent.plan_my_day(email, ui.show_step)
+                runs_left -= 1
+                status.update(
+                    label=f"Done · used {ui.tools_used(result['steps'])} tools · cost ${result['cost']:.4f}",
+                    state="complete", expanded=False,
+                )
+            except anthropic.AuthenticationError:
+                status.update(label="Claude didn't accept the API key", state="error")
+                st.error("The `anthropic_api_key` in secrets.toml isn't valid.")
+            except anthropic.BadRequestError as error:
+                status.update(label="Claude couldn't run", state="error")
+                if "credit" in error.message.lower():
+                    st.error("The Claude account is out of credits. Add more at console.anthropic.com.")
+                else:
+                    st.error(f"Claude said the request was invalid: {error.message}")
+            except anthropic.RateLimitError:
+                status.update(label="Claude is busy", state="error")
+                st.error("Too many requests to Claude right now. Wait a minute and try again.")
+            except anthropic.APIConnectionError:
+                status.update(label="Couldn't reach Claude", state="error")
+                st.error("Couldn't connect to Claude. Check the internet connection and try again.")
+            except anthropic.APIStatusError as error:
+                status.update(label="Claude had a problem", state="error")
+                st.error(f"Claude returned an error ({error.status_code}). Try again in a minute.")
 
-if site_full:
-    note_spot.caption("The coach has reached today's limit for the whole site. Try again tomorrow.")
-else:
-    note_spot.caption(f"{max(runs_left, 0)} of {config.RUNS_PER_PERSON_PER_DAY} runs left today · model: {config.MODEL}")
-
-latest_run = db.latest_agent_run(email)
-with card:
-    if latest_run:
-        first_line, _, rest = latest_run["final_decision"].partition("\n")
-        st.markdown(f"#### {ui.plain(first_line)}")
-        if rest.strip():
-            st.write(ui.plain(rest.strip()))
-        st.caption(
-            f"Planned {ui.time_ago(latest_run['created_at'])} · used {ui.tools_used(latest_run['steps'])} tools · "
-            f"cost ${float(latest_run['cost_usd']):.4f} · {latest_run['model']}"
-        )
+    if site_full:
+        note_spot.caption("The coach has reached today's limit for the whole site. Try again tomorrow.")
     else:
-        st.markdown("#### Ready when you are")
-        st.write("Press **Plan my day** and the coach will read your WHOOP data, check the weather, "
-                 "and decide today's workout.")
-if latest_run:
-    with st.expander("🔍 See every step the agent took"):
-        raw = st.toggle("Show the raw data Claude saw")
-        ui.show_steps(latest_run["steps"], raw)
+        note_spot.caption(f"{max(runs_left, 0)} of {config.RUNS_PER_PERSON_PER_DAY} runs left today · {config.MODEL}")
+
+    latest_run = db.latest_agent_run(email)
+    plan = {row["date"]: row for row in db.get_plan(email, today.isoformat(), (today + timedelta(days=6)).isoformat())}
+    with decision_spot:
+        if latest_run:
+            label_spot, meta_spot = st.columns(2)
+            with label_spot:
+                ui.label("Today's workout", "auto_awesome", "workout")
+            with meta_spot.container(key="meta-run"):
+                st.caption(f"Planned {ui.time_ago(latest_run['created_at'])} · "
+                           f"{ui.tools_used(latest_run['steps'])} tools · ${float(latest_run['cost_usd']):.4f}")
+            # The headline is the short workout the coach saved; the explanation is its full reply.
+            today_row = plan.get(today.isoformat(), {})
+            saved_workout = today_row.get("adjusted_workout") or today_row.get("planned_workout")
+            title, detail = ui.split_workout(saved_workout or latest_run["final_decision"].split(". ")[0])
+            st.html(f"<div class='headline'>{html.escape(title)}</div>"
+                    + (f"<div class='subhead'>{html.escape(detail)}</div>" if detail else ""))
+            # The coach's first line repeats the workout, so show only the explanation after it.
+            first_line, _, explanation = latest_run["final_decision"].partition("\n")
+            st.write(ui.plain(explanation.strip() or first_line))
+        else:
+            ui.label("Today's workout", "auto_awesome", "workout")
+            st.html("<div class='headline'>Ready when you are</div>")
+            st.write("Press **Plan my day** and the coach will read your WHOOP data, check the weather, "
+                     "and decide today's workout.")
+
+    if latest_run:
+        with st.expander("How the coach decided", icon=":material/account_tree:"):
+            raw = st.toggle("Show the raw data Claude saw")
+            ui.show_steps(latest_run["steps"], raw)
 
 
 # ---------- 3. This week's plan ----------
-st.subheader("📅 This week")
-plan = {row["date"]: row for row in db.get_plan(email, today.isoformat(), (today + timedelta(days=6)).isoformat())}
+st.write("")
+ui.label("This week", "calendar_month", "week")
 if plan:
-    for offset, column in enumerate(st.columns(7)):
+    week = []
+    for offset in range(7):
         day = today + timedelta(days=offset)
         row = plan.get(day.isoformat(), {})
-        workout = row.get("adjusted_workout") or row.get("planned_workout") or "–"
-        with column.container(border=True):
-            st.markdown(f"**{'Today' if offset == 0 else f'{day:%a}'}** · {day.day}")
-            st.markdown(f"<div style='font-size:0.9rem;line-height:1.35'>{html.escape(workout)}</div>",
-                        unsafe_allow_html=True)
-            if row.get("adjusted_workout") and row.get("planned_workout") and row["adjusted_workout"] != row["planned_workout"]:
-                st.caption("✏️ changed by the coach")
+        changed = bool(row.get("adjusted_workout") and row.get("planned_workout")
+                       and row["adjusted_workout"] != row["planned_workout"])
+        week.append({"weekday": f"{day:%a}", "day": day.day, "today": offset == 0, "changed": changed,
+                     "workout": row.get("adjusted_workout") or row.get("planned_workout") or ""})
+    st.html(ui.week_grid(week))
 else:
     st.caption("No plan yet. Press **Plan my day** and the coach will write one.")
 
 
 # ---------- 4. Charts ----------
-st.subheader("📊 Your data")
+st.write("")
+ui.label("Your data", "insights", "data")
 range_spot, refresh_spot = st.columns([3, 1], vertical_alignment="center")
 span = range_spot.segmented_control(
     "Time range", ["7 days", "30 days", "90 days"], default="30 days", required=True, label_visibility="collapsed",
 )
-if refresh_spot.button("🔄 Refresh WHOOP data", width="stretch"):
+if refresh_spot.button("Refresh WHOOP data", icon=":material/sync:", width="stretch"):
     try:
         with st.spinner("Downloading from WHOOP..."):
             whoop.sync(email)
@@ -293,9 +312,10 @@ shown = days[days["date"] >= start]
 shown_workouts = workouts[workouts["date"] >= start] if not workouts.empty else workouts
 weeks = max(4, count // 7)
 
-recovery_tab, sleep_tab, training_tab, insights_tab, data_tab = st.tabs(
-    ["💚 Recovery", "😴 Sleep", "🏃 Training", "💡 Insights", "📋 All data"]
-)
+recovery_tab, sleep_tab, training_tab, insights_tab, data_tab = st.tabs([
+    ":material/monitor_heart: Recovery", ":material/bedtime: Sleep", ":material/directions_run: Training",
+    ":material/lightbulb: Insights", ":material/table_chart: All data",
+])
 
 with recovery_tab:
     st.markdown("**Recovery each morning**")
@@ -315,11 +335,12 @@ with recovery_tab:
     st.markdown("**Other signals**")
     st.caption("Big changes in these can be an early sign of getting sick.")
     others = st.columns(3)
-    tile(others[0], "Blood oxygen", latest.get("spo2"), "%", normal("spo2"), "vs normal", shown["spo2"], 1, "off")
-    tile(others[1], "Skin temperature", latest.get("skin_temp_c"), " °C", normal("skin_temp_c"), "vs normal",
-         shown["skin_temp_c"], 1, "off")
-    tile(others[2], "Breathing rate", latest.get("respiratory_rate"), " /min", normal("respiratory_rate"),
-         "vs normal", shown["respiratory_rate"], 1, "off")
+    tile(others[0], ":material/spo2: Blood oxygen", latest.get("spo2"), "%", normal("spo2"), "vs normal",
+         shown["spo2"], 1, "off")
+    tile(others[1], ":material/thermostat: Skin temperature", latest.get("skin_temp_c"), " °C", normal("skin_temp_c"),
+         "vs normal", shown["skin_temp_c"], 1, "off")
+    tile(others[2], ":material/air: Breathing rate", latest.get("respiratory_rate"), " /min",
+         normal("respiratory_rate"), "vs normal", shown["respiratory_rate"], 1, "off")
 
 with sleep_tab:
     sleep_tiles = st.columns(4)
@@ -375,14 +396,16 @@ with insights_tab:
                "Longer time ranges give more reliable patterns.")
     found = charts.insights(shown, shown_workouts, time_zone)
     if found:
-        for pair_start in range(0, len(found), 2):
-            for spot, (title, headline, explanation) in zip(st.columns(2), found[pair_start:pair_start + 2]):
-                with spot.container(border=True):
-                    st.caption(title)
-                    st.markdown(f"### {headline}")
-                    st.write(explanation)
+        for first in range(0, len(found), 2):
+            for spot, (number, (icon, title, headline, explanation)) in zip(
+                    st.columns(2, gap="medium"), enumerate(found[first:first + 2], start=first)):
+                with spot.container(key=f"card-insight-{number}"):
+                    ui.label(title, icon, f"insight-{number}")
+                    st.html(f"<div class='headline'>{html.escape(headline)}</div>")
+                    st.caption(explanation)
     else:
-        st.info("Not enough data for patterns yet. Try the 90-day range, or check back in a couple of weeks.")
+        st.info("Not enough data for patterns yet. Try the 90-day range, or check back in a couple of weeks.",
+                icon=":material/info:")
     scatter_spot, weekday_spot = st.columns(2, gap="large")
     with scatter_spot:
         st.markdown("**Hours of sleep vs. next-morning recovery**")
