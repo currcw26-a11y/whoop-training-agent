@@ -65,6 +65,7 @@ and click Run (one time only).
 | `weather.py` | City lookup and forecast from Open-Meteo |
 | `privacy.py` | Privacy policy and "Delete my data" |
 | `whoop.py` | Connects to WHOOP and downloads your data |
+| `google_calendar.py` | Connects Google Calendar, finds free time, adds approved workouts |
 | `db.py` | Reads and writes the database (encrypts login tokens) |
 | `schema.sql` | Creates the database tables |
 | `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font, rounded corners |
@@ -76,7 +77,7 @@ and click Run (one time only).
 - [x] Phase 1: Google sign-in, WHOOP, and the database
 - [x] Phase 2: The agent (weather + Claude tool loop + "Plan my day")
 - [x] Design pass: dashboard, charts, insights, light and dark mode
-- [ ] Phase 3: Google Calendar (asks for approval before adding events)
+- [x] Phase 3: Google Calendar (asks for approval before adding events)
 - [ ] Phase 4: Deploy to Streamlit Community Cloud
 - [ ] Phase 5: Screen Time
 - [ ] Phase 6 (optional): Morning automation

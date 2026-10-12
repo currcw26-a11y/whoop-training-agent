@@ -6,12 +6,14 @@ from datetime import date
 import requests
 import streamlit as st
 
+import config
 import db
+import google_calendar
 import ui
 import weather
 import whoop
 
-RUN_TIMES = ["Early morning (6-9am)", "Late morning (9am-12pm)", "Midday (12-3pm)", "Afternoon (3-6pm)", "Evening (6-9pm)"]
+RUN_TIMES = list(config.RUN_TIME_WINDOWS)  # "Early morning (6-9am)", ... (defined in config.py)
 
 email = st.user.email
 profile = db.get_profile(email)
@@ -65,14 +67,29 @@ with st.container(key="card-whoop-link"):
     left, right = st.columns([3, 1], vertical_alignment="center")
     if db.is_connected(email, "whoop"):
         left.markdown(f":material/watch: **WHOOP** · connected · last download {ui.time_ago(profile['whoop_synced_at'])}")
-        if right.button("Disconnect", icon=":material/link_off:"):
+        if right.button("Disconnect", icon=":material/link_off:", key="disconnect-whoop"):
             db.delete_tokens(email, "whoop")
             st.rerun()
     else:
         left.markdown(":material/watch: **WHOOP** · not connected")
         right.page_link("home.py", label="Connect")
 with st.container(key="card-calendar-link"):
-    st.markdown(":material/calendar_month: **Google Calendar** · coming soon")
+    left, right = st.columns([3, 1], vertical_alignment="center")
+    if db.is_connected(email, "google"):
+        left.markdown(":material/calendar_month: **Google Calendar** · connected")
+        left.caption("The coach sees your events to find free time. It only adds a workout when you approve it.")
+        if right.button("Disconnect", icon=":material/link_off:", key="disconnect-google"):
+            google_calendar.disconnect(email)
+            st.rerun()
+    else:
+        left.markdown(":material/calendar_month: **Google Calendar** · not connected")
+        left.caption("Lets the coach see your classes and free time and suggest a workout time. "
+                     "Nothing is added unless you approve it.")
+        # A one-time ticket, like the WHOOP one, so only you can finish connecting.
+        if "google_state" not in st.session_state:
+            st.session_state.google_state = db.new_oauth_state(email, "google")
+        right.link_button("Connect", google_calendar.login_url(st.session_state.google_state, email),
+                          icon=":material/link:", type="primary")
 
 if db.is_connected(email, "whoop") and st.button("Download 90 days of WHOOP history", icon=":material/download:"):
     try:

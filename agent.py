@@ -9,7 +9,7 @@
 # Every step is recorded so the website can show exactly what the agent did.
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -18,6 +18,7 @@ import streamlit as st
 
 import config
 import db
+import google_calendar
 import weather
 import whoop
 
@@ -26,11 +27,12 @@ import whoop
 SYSTEM_PROMPT = """You are the coach inside Training Coach, a website that plans one person's training each day from their WHOOP data, the weather, and their training plan.
 
 Each run, do this:
-1. Gather the facts. In your first turn, call all of these together: get_whoop_recovery, get_whoop_sleep, get_whoop_strain, get_whoop_workouts, get_weather, get_training_plan, and get_training_history.
+1. Gather the facts. In your first turn, call all of these together: get_whoop_recovery, get_whoop_sleep, get_whoop_strain, get_whoop_workouts, get_weather, get_training_plan, get_training_history, and get_calendar_events (if you have it).
 2. If get_training_plan has nothing planned for the coming week, write a plan for today and the next 13 days with update_training_plan. Start from what the person does now (their recent WHOOP workouts and what they wrote about themselves) and build toward their goal. Raise weekly running distance by no more than about 10% a week, include at least 2 rest or cross-training days a week, put the longest run on a weekend, and use run/walk for newer runners. If they gave a goal date, aim to get there safely; if the goal looks unrealistic for that date, plan safely anyway and say so.
 3. Decide today's workout: keep what was planned, make it easier, swap it with another day this week (update both days with update_training_plan), or rest.
-4. Call save_daily_log once with today's final workout, the reason, and a one-line weather summary.
-5. Reply to the person. First line: today's workout, in a few words. Then 2 to 3 short sentences explaining why, quoting the numbers that mattered (for example "Recovery 41%, down from 70% yesterday"). If weather matters, say the best time to go. Keep the whole reply under 80 words: the plan itself is shown separately, so don't describe it. Plain text only, no headings or bullet points.
+4. Pick a time for the next workout: today's, or, if you moved it to another day, that day. If you have create_calendar_event: choose a free window from get_calendar_events (ask for enough days to cover that day), inside the times they're willing to run if possible, with OK weather that hour, then call create_calendar_event once. It only suggests the time; the person approves it on the website. If you don't have calendar tools, pick a time from the weather and their run times.
+5. Call save_daily_log once with today's final workout (include the time), the reason, and a one-line weather summary.
+6. Reply to the person. First line: today's workout, in a few words. Then 2 to 3 short sentences explaining why, quoting the numbers that mattered (for example "Recovery 41%, down from 70% yesterday"). If weather matters, say the best time to go. Keep the whole reply under 80 words: the plan itself is shown separately, so don't describe it. Plain text only, no headings or bullet points.
 
 How to decide:
 - WHOOP recovery: 67-100% is green (the planned workout is fine), 34-66% is yellow (consider making it easier), 0-33% is red (easy movement or rest).
@@ -38,13 +40,14 @@ How to decide:
 - If recovery was red on 2 of the last 3 days, or has been falling for several days, choose rest or very easy movement. Never stack hard days on low recovery.
 - Sleep well short of their sleep need, or a large sleep debt, means make it easier.
 - Avoid two hard days in a row; check yesterday's strain and recent workouts.
+- Busy days: if their calendar shows an exam, test, quiz, midterm, final, or presentation today or tomorrow, or the day is packed, keep the workout short and easy (or move it), and don't schedule it right before the exam.
 - Weather: avoid thunderstorms, heavy rain, ice, and feels-like temperatures above about 90°F or below about 20°F. Pick a better hour within the times they are willing to run, or suggest an indoor option.
 - You give training suggestions, not medical advice. If the numbers could point to illness or injury (several red days in a row, resting heart rate far above normal, high skin temperature, low blood oxygen), recommend rest, and suggest seeing a doctor or athletic trainer if it continues.
 
 Notes:
 - Dates are written YYYY-MM-DD. Treat the date in the first message as today.
 - If a tool returns an error or no data, work with what you have and mention it briefly.
-- You can't see the person's calendar yet."""
+- If you suggested a calendar time, say in your reply that it's waiting for their OK."""
 
 
 # ---------- The tools Claude may use (name, what it does, and what to send) ----------
@@ -147,6 +150,41 @@ TOOLS = [
 ]
 
 
+# Only given to Claude when the person has connected Google Calendar.
+CALENDAR_TOOLS = [
+    {
+        "name": "get_calendar_events",
+        "description": "The person's Google Calendar, starting today: each day's events (title, start and end on "
+                       "their local 24-hour clock, and which calendar) plus 'free_windows', open stretches of 30+ "
+                       "minutes between 06:00 and 21:00, each marked with whether it falls in the times they like "
+                       "to run. Classes, exams, and work show up here. Use it to pick a workout time that fits.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "description": "How many days to look at, starting today, 1 to 7. Default 2."},
+            },
+        },
+    },
+    {
+        "name": "create_calendar_event",
+        "description": "Suggest a time for the next workout (today's, or the day you moved it to) on the person's Google Calendar. It is NOT added right "
+                       "away: the website shows the person an 'Add to calendar' button and they decide. Use a free "
+                       "window from get_calendar_events, inside their run times if possible, when the weather that "
+                       "hour is OK, and not right before an exam. Call it at most once per run, and never for a rest day.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "YYYY-MM-DD, today or up to 6 days ahead"},
+                "start_time": {"type": "string", "description": "HH:MM on their local 24-hour clock, like 07:00"},
+                "minutes": {"type": "integer", "description": "How long to block off, including warm-up and cool-down"},
+                "title": {"type": "string", "description": "Short, like 'Easy run/walk, 2 miles'"},
+            },
+            "required": ["date", "start_time", "minutes", "title"],
+        },
+    },
+]
+
+
 # ---------- What each tool actually does ----------
 # Each one gets `person` (who we're planning for) and `tool_input` (what Claude asked for),
 # and returns a dictionary that gets sent back to Claude as the result.
@@ -176,8 +214,8 @@ def get_whoop_recovery(person, tool_input):
 
 
 def get_whoop_sleep(person, tool_input):
-    def clock(time):  # "2026-10-10T03:12:00+00:00" -> "23:12" in their time zone
-        return datetime.fromisoformat(time).astimezone(person["zone"]).strftime("%H:%M") if time else None
+    def clock(moment):  # "2026-10-10T03:12:00+00:00" -> "23:12" in their time zone
+        return datetime.fromisoformat(moment).astimezone(person["zone"]).strftime("%H:%M") if moment else None
 
     nights = []
     for row in db.get_daily_metrics(person["email"], days=30)[: _days(tool_input, 7)]:
@@ -264,6 +302,66 @@ def save_daily_log(person, tool_input):
     return {"saved": True, "date": today}
 
 
+def _preferred_hours(profile):
+    """The (start hour, end hour) windows the person picked on their Coaching profile."""
+    picked = (profile.get("run_times") or "").split(", ")
+    return [config.RUN_TIME_WINDOWS[name] for name in picked if name in config.RUN_TIME_WINDOWS]
+
+
+def get_calendar_events(person, tool_input):
+    zone, today = person["zone"], person["today"]
+    days = max(1, min(int(tool_input.get("days", 2)), 7))
+    start = datetime.combine(today, time(0), zone)
+    events = google_calendar.list_events(person["email"], start, start + timedelta(days=days), zone)
+    result = []
+    for offset in range(days):
+        day = today + timedelta(days=offset)
+        listed = []
+        for event in events:
+            if event["all_day"]:
+                on_this_day = event["start"].date() <= day < event["end"].date()  # all-day events end the next day
+            else:
+                on_this_day = event["start"].date() == day
+            if on_this_day:
+                listed.append({
+                    "title": event["title"],
+                    "start": None if event["all_day"] else f"{event['start']:%H:%M}",
+                    "end": None if event["all_day"] else f"{event['end']:%H:%M}",
+                    "all_day": event["all_day"],
+                    "calendar": event["calendar"],
+                    "is_a_workout_you_scheduled": event["from_coach"],
+                })
+        result.append({
+            "date": day.isoformat(),
+            "weekday": f"{day:%a}",
+            "events": listed[:25],
+            "free_windows": google_calendar.free_windows(events, day, zone, person["now"], _preferred_hours(person["profile"])),
+        })
+    return {"time_zone": str(zone), "days": result}
+
+
+def create_calendar_event(person, tool_input):
+    """Check the suggested time, then save it as a proposal. Nothing goes on the calendar until the person approves."""
+    zone, today = person["zone"], person["today"]
+    day = date.fromisoformat(tool_input["date"])
+    if not today <= day <= today + timedelta(days=6):
+        raise ValueError("Pick a date from today to 6 days from now.")
+    start = datetime.combine(day, time.fromisoformat(tool_input["start_time"]), zone)
+    minutes = max(10, min(int(tool_input["minutes"]), 240))
+    end = start + timedelta(minutes=minutes)
+    if start < person["now"]:
+        raise ValueError("That time has already passed. Pick a later time.")
+    clashes = [
+        event["title"] for event in google_calendar.list_events(person["email"], start, end, zone)
+        if event["busy"] and not event["all_day"] and not event["from_coach"]
+    ]
+    if clashes:
+        raise ValueError(f"That time overlaps with: {', '.join(clashes)}. Pick a free window from get_calendar_events.")
+    db.save_event_proposal(person["email"], day.isoformat(), start.isoformat(), minutes, tool_input["title"])
+    return {"status": "waiting_for_approval",
+            "note": "The person sees an 'Add to calendar' button on the website and decides."}
+
+
 TOOL_FUNCTIONS = {
     "get_whoop_recovery": get_whoop_recovery,
     "get_whoop_sleep": get_whoop_sleep,
@@ -274,6 +372,8 @@ TOOL_FUNCTIONS = {
     "get_training_history": get_training_history,
     "update_training_plan": update_training_plan,
     "save_daily_log": save_daily_log,
+    "get_calendar_events": get_calendar_events,
+    "create_calendar_event": create_calendar_event,
 }
 
 
@@ -300,7 +400,7 @@ def _cost(usage):
     )
 
 
-def _first_message(profile, now):
+def _first_message(profile, now, has_calendar):
     """The message that starts each run: today's date and what the person told us about themselves."""
     return f"""Today is {now:%A, %B} {now.day}, {now.year}, and it's {now:%I:%M %p} where this person lives ({profile['timezone']}).
 
@@ -310,6 +410,7 @@ About them, in their own words:
 - What they do now: {profile.get('experience') or 'not given'}
 - Times they're willing to run: {profile.get('run_times') or 'any time'}
 - Location: {profile.get('place_name') or 'unknown'}
+- Google Calendar: {'connected' if has_calendar else 'not connected'}
 
 Plan today's training."""
 
@@ -336,10 +437,13 @@ def plan_my_day(email, show_step):
     profile = db.get_profile(email)
     zone = ZoneInfo(profile["timezone"] or "America/New_York")
     now = datetime.now(zone)
-    person = {"email": email, "profile": profile, "today": now.date(), "zone": zone}
+    person = {"email": email, "profile": profile, "today": now.date(), "now": now, "zone": zone}
+    # The calendar tools are only offered when the person has connected Google Calendar.
+    has_calendar = db.is_connected(email, "google")
+    tools = TOOLS + CALENDAR_TOOLS if has_calendar else TOOLS
 
     client = anthropic.Anthropic(api_key=st.secrets["anthropic_api_key"])
-    messages = [{"role": "user", "content": _first_message(profile, now)}]
+    messages = [{"role": "user", "content": _first_message(profile, now, has_calendar)}]
     cost = 0.0
 
     for _ in range(config.MAX_STEPS):
@@ -347,7 +451,7 @@ def plan_my_day(email, show_step):
             model=config.MODEL,
             max_tokens=16000,
             system=SYSTEM_PROMPT,
-            tools=TOOLS,
+            tools=tools,
             messages=messages,
             # Claude thinks before answering; "summarized" lets us show a short version of that thinking.
             thinking={"type": "adaptive", "display": "summarized"},

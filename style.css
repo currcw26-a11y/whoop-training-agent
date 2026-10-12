@@ -106,7 +106,14 @@ h2, h3, h4 { letter-spacing: -0.02em; }
   display: inline-block; white-space: nowrap; direction: ltr;
   font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
 }
-.changed .msr { font-size: 14px; }
+.changed .msr, .time .msr { font-size: 14px; }
+.day .time { font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.15rem; }
+
+/* The "Add to your Google Calendar?" box in the coach card. */
+.st-key-approve-event {
+  border: 1px solid rgba(57, 135, 229, 0.55); background: rgba(57, 135, 229, 0.08);
+  border-radius: 14px; padding: 0.9rem 1.05rem;
+}
 
 /* ---------- Welcome page ---------- */
 .st-key-card-feature-1 [data-testid="stIconMaterial"],

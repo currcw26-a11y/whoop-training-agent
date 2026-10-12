@@ -12,6 +12,7 @@ TOOL_ICONS = {
     "get_whoop_recovery": "monitor_heart", "get_whoop_sleep": "bedtime", "get_whoop_strain": "local_fire_department",
     "get_whoop_workouts": "directions_run", "get_weather": "partly_cloudy_day", "get_training_plan": "calendar_month",
     "get_training_history": "history", "update_training_plan": "edit_calendar", "save_daily_log": "save",
+    "get_calendar_events": "event", "create_calendar_event": "calendar_add_on",
 }
 
 WORKOUT_ICONS = {"run": "directions_run", "walk": "directions_walk", "cross": "exercise", "rest": "bedtime", "other": "event"}
@@ -43,6 +44,11 @@ def time_ago(saved_time):
     if minutes < 48 * 60:
         return f"{minutes // 60} hours ago"
     return f"{minutes // (24 * 60)} days ago"
+
+
+def clock(moment):
+    """A time like 7:00 AM."""
+    return f"{moment:%I:%M %p}".lstrip("0")
 
 
 def label(text, icon, key):
@@ -105,11 +111,15 @@ def split_workout(text):
 
 def week_grid(days):
     """Seven equal cards for the week. Each item in `days` has:
-    weekday, day, workout, today (True/False), changed (True/False)."""
+    weekday, day, workout, today (True/False), changed (True/False),
+    and optionally time (like "7:00 AM") and on_calendar (True/False)."""
     cards = []
     for day in days:
         title, detail = split_workout(day["workout"])
         kind = workout_kind(day["workout"]) if day["workout"] else "other"
+        scheduled = (f"<div class='time'><span class='msr'>{'event_available' if day.get('on_calendar') else 'schedule'}</span>"
+                     f"{html.escape(day['time'])}{' · on calendar' if day.get('on_calendar') else ''}</div>"
+                     if day.get("time") else "")
         changed = ("<div class='changed'><span class='msr'>edit</span>Adjusted</div>"
                    if day["changed"] else "")
         cards.append(
@@ -118,7 +128,7 @@ def week_grid(days):
             f"<span class='num'>{day['day']}</span></div>"
             f"<div class='badge {kind}'><span class='msr'>{WORKOUT_ICONS[kind]}</span></div>"
             f"<div class='title'>{html.escape(title or 'Nothing planned')}</div>"
-            f"<div class='detail'>{html.escape(detail)}</div>{changed}</div>"
+            f"<div class='detail'>{html.escape(detail)}</div>{scheduled}{changed}</div>"
         )
     return f"<div class='week'>{''.join(cards)}</div>"
 
@@ -154,6 +164,11 @@ def summarize(tool, tool_input, output):
             return f"wrote {output['saved']} days of the plan"
         if tool == "save_daily_log":
             return f"saved today's decision: {tool_input['workout']}"
+        if tool == "get_calendar_events":
+            today = output["days"][0]
+            return f"{len(today['events'])} events today, {len(today['free_windows'])} free windows"
+        if tool == "create_calendar_event":
+            return f"suggested {tool_input['start_time']} for {tool_input['minutes']} min, waiting for your OK"
     except (KeyError, IndexError, TypeError):
         pass  # no data, or an older format: fall back to a plain "done"
     return "done"

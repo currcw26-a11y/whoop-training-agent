@@ -13,6 +13,21 @@ EFFORT = "medium"
 # from looping forever (and from spending forever).
 MAX_STEPS = 10
 
+# The times of day people can pick on their Coaching profile, as (start hour, end hour).
+RUN_TIME_WINDOWS = {
+    "Early morning (6-9am)": (6, 9),
+    "Late morning (9am-12pm)": (9, 12),
+    "Midday (12-3pm)": (12, 15),
+    "Afternoon (3-6pm)": (15, 18),
+    "Evening (6-9pm)": (18, 21),
+}
+
+# When looking for free time on someone's calendar: only between these hours,
+# and only gaps at least this long.
+DAY_START_HOUR = 6
+DAY_END_HOUR = 21
+MIN_FREE_MINUTES = 30
+
 # Daily limits, because everyone's runs come out of one Claude account.
 RUNS_PER_PERSON_PER_DAY = 5
 RUNS_PER_SITE_PER_DAY = 100

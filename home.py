@@ -17,6 +17,7 @@ import agent
 import charts
 import config
 import db
+import google_calendar
 import ui
 import weather
 import whoop
@@ -53,6 +54,48 @@ def tile(spot, label, value, unit, compare, compare_text, history, digits=0, col
     )
 
 
+def calendar_box(email, plan, today, connected, time_zone):
+    """Under today's workout: ask to add the coach's suggested time to Google Calendar,
+    or show that it's already there. Nothing goes on the calendar without this click.
+    It shows the next workout this week that has a suggested time (it may be moved to another day)."""
+    timed = [row for _, row in sorted(plan.items())
+             if row.get("event_start") and row.get("event_status") in ("proposed", "added")]
+    waiting = [row for row in timed if row["event_status"] == "proposed"]
+    row = (waiting or timed or [{}])[0]  # a suggestion waiting for an answer comes first
+    status = row.get("event_status")
+    if status:
+        day = row["date"]
+        begins = datetime.fromisoformat(row["event_start"]).astimezone(time_zone)
+        minutes = row.get("event_minutes") or 30
+        day_name = "Today" if day == today.isoformat() else f"{begins:%a, %b} {begins.day}"
+        when = f"{day_name}, {ui.clock(begins)}–{ui.clock(begins + timedelta(minutes=minutes))}"
+        title = row.get("event_title") or "Workout"
+        if status == "added":
+            st.caption(f":material/event_available: On your Google Calendar · {when}")
+            return
+        with st.container(key="approve-event"):
+            st.markdown(f":material/calendar_add_on: **Add to your Google Calendar?** &nbsp;{when} · {title}")
+            yes, no, _ = st.columns([1.4, 1, 2.6])
+            if yes.button("Add to calendar", icon=":material/event_available:", type="primary", key="approve-yes"):
+                try:
+                    event_id = google_calendar.save_workout_event(
+                        email, row.get("calendar_event_id"), begins, minutes, title,
+                        f"{row.get('reason') or ''}\n\nPlanned by Training Coach.", str(time_zone),
+                    )
+                    db.set_event_status(email, day, "added", event_id)
+                    st.toast("Added to your Google Calendar.", icon=":material/event_available:")
+                    st.rerun()
+                except requests.HTTPError as error:
+                    st.error(f"Google Calendar said no (error {error.response.status_code}). Try disconnecting "
+                             "and connecting it again on your Coaching profile.", icon=":material/error:")
+            if no.button("No thanks", key="approve-no"):
+                db.set_event_status(email, day, "declined")
+                st.rerun()
+    elif not connected:
+        st.caption(":material/calendar_month: Connect Google Calendar on your Coaching profile, "
+                   "and the coach will plan around your classes.")
+
+
 # ---------- Signed out: the welcome page ----------
 if not st.user.is_logged_in:
     ui.label("AI training coach", "directions_run", "welcome")
@@ -84,13 +127,14 @@ first_name = (st.user.get("given_name") or st.user.get("name") or "there").split
 params = st.query_params.to_dict()
 if "state" in params:
     st.query_params.clear()  # tidy the address bar so this only happens once
-    provider = db.use_oauth_state(email, params["state"])
-    if provider != "whoop":
-        st.error("That connection link expired or wasn't yours. Please press **Connect WHOOP** again.",
+    provider = db.use_oauth_state(email, params["state"])  # "whoop" or "google", or None if the ticket is bad
+    service = {"whoop": "WHOOP", "google": "Google Calendar"}.get(provider)
+    if provider is None:
+        st.error("That connection link expired or wasn't yours. Please press **Connect** again.",
                  icon=":material/error:")
     elif "code" not in params:
-        st.warning("WHOOP wasn't connected. You may have pressed Cancel.", icon=":material/warning:")
-    else:
+        st.warning(f"{service} wasn't connected. You may have pressed Cancel.", icon=":material/warning:")
+    elif provider == "whoop":
         try:
             whoop.finish_connecting(email, params["code"])
             with st.spinner("Connected! Downloading your last 90 days from WHOOP..."):
@@ -98,6 +142,19 @@ if "state" in params:
             st.success("Your WHOOP is connected.", icon=":material/check_circle:")
         except requests.HTTPError as error:
             whoop_error(error)
+    else:  # Google Calendar
+        try:
+            missing = google_calendar.finish_connecting(email, params["code"])
+            if missing:
+                st.warning("Google Calendar is connected, but some boxes were unchecked on Google's screen, so the "
+                           "coach can't see or add events. Disconnect it on your Coaching profile and connect again, "
+                           "checking every box.", icon=":material/warning:")
+            else:
+                st.success("Google Calendar is connected. The coach will now plan around your schedule.",
+                           icon=":material/check_circle:")
+        except requests.HTTPError as error:
+            st.error(f"Google turned down the request (error {error.response.status_code}). Try connecting again.",
+                     icon=":material/error:")
 
 
 # ---------- Connect WHOOP (first visit) ----------
@@ -123,6 +180,7 @@ time_zone = ZoneInfo(profile["timezone"] or "America/New_York")
 now = datetime.now(time_zone)
 today = now.date()
 ready = bool(profile["goal"]) and profile["latitude"] is not None
+calendar_connected = db.is_connected(email, "google")
 
 part_of_day = "morning" if now.hour < 12 else "afternoon" if now.hour < 18 else "evening"
 greeting, weather_spot = st.columns([3, 2], vertical_alignment="bottom")
@@ -260,11 +318,13 @@ with st.container(key="card-coach"):
             # The coach's first line repeats the workout, so show only the explanation after it.
             first_line, _, explanation = latest_run["final_decision"].partition("\n")
             st.write(ui.plain(explanation.strip() or first_line))
+            calendar_box(email, plan, today, calendar_connected, time_zone)
         else:
             ui.label("Today's workout", "auto_awesome", "workout")
             st.html("<div class='headline'>Ready when you are</div>")
             st.write("Press **Plan my day** and the coach will read your WHOOP data, check the weather, "
                      "and decide today's workout.")
+            calendar_box(email, plan, today, calendar_connected, time_zone)
 
     if latest_run:
         with st.expander("How the coach decided", icon=":material/account_tree:"):
@@ -282,8 +342,12 @@ if plan:
         row = plan.get(day.isoformat(), {})
         changed = bool(row.get("adjusted_workout") and row.get("planned_workout")
                        and row["adjusted_workout"] != row["planned_workout"])
+        scheduled = row.get("event_start") and row.get("event_status") in ("proposed", "added")
         week.append({"weekday": f"{day:%a}", "day": day.day, "today": offset == 0, "changed": changed,
-                     "workout": row.get("adjusted_workout") or row.get("planned_workout") or ""})
+                     "workout": row.get("adjusted_workout") or row.get("planned_workout") or "",
+                     "time": ui.clock(datetime.fromisoformat(row["event_start"]).astimezone(time_zone))
+                     if scheduled else None,
+                     "on_calendar": row.get("event_status") == "added"})
     st.html(ui.week_grid(week))
 else:
     st.caption("No plan yet. Press **Plan my day** and the coach will write one.")

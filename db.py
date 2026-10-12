@@ -190,6 +190,22 @@ def save_decision(email, day, workout, reason):
     }).execute()
 
 
+def save_event_proposal(email, day, start, minutes, title):
+    """Remember the calendar time the coach suggested. It waits here until the person approves it."""
+    _client().table("training_plan").upsert({
+        "email": email, "date": day, "event_start": start, "event_minutes": minutes,
+        "event_title": title, "event_status": "proposed",
+    }).execute()
+
+
+def set_event_status(email, day, status, event_id=None):
+    """Mark a suggested calendar time as 'added' (with Google's event ID) or 'declined'."""
+    changes = {"event_status": status}
+    if event_id:
+        changes["calendar_event_id"] = event_id
+    _client().table("training_plan").update(changes).eq("email", email).eq("date", day).execute()
+
+
 # ---------- Agent runs ----------
 
 def save_agent_run(email, model, steps, final_decision, cost_usd):

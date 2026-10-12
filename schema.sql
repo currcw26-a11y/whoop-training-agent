@@ -133,6 +133,13 @@ alter table workouts add column if not exists max_hr int;
 alter table workouts add column if not exists calories int;
 alter table workouts add column if not exists zone_minutes jsonb;   -- minutes in heart-rate zones 0-5, like [3, 10, 12, 5, 1, 0]
 
+-- ===================== Added in Phase 3 =====================
+-- The workout time the coach suggests for Google Calendar, and whether the person approved it.
+alter table training_plan add column if not exists event_start timestamptz;
+alter table training_plan add column if not exists event_minutes int;
+alter table training_plan add column if not exists event_title text;
+alter table training_plan add column if not exists event_status text;   -- 'proposed', 'added', or 'declined'
+
 -- SECURITY: turn on Row Level Security and add NO policies.
 -- That means the public (publishable) key can't read or change anything.
 -- Only the website's server, which uses the secret key, can get in.
