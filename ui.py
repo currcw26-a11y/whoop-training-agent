@@ -1,9 +1,10 @@
-# ui.py: display helpers shared by the pages: icons, labels, the recovery ring,
-# the week plan, and the agent's steps.
+# ui.py: display helpers shared by the pages: icons, labels, the recovery ring, number tiles,
+# today's agenda, the week calendar, and the agent's steps.
 # Icons are Google's Material Symbols (built into Streamlit). Browse them at
 # https://fonts.google.com/icons and write them like ":material/favorite:".
 
 import html
+import math
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -69,28 +70,86 @@ def weather_chip(sky, icon_name, place):
     )
 
 
-def recovery_ring(score, color, zone_name, advice, when):
-    """A WHOOP-style ring that fills up to the recovery score, in the zone's color.
-    It's drawn with CSS (see .ring in style.css): --pct says how full, --ring-color which color."""
+def draw(markup):
+    """Show our own HTML. (st.markdown keeps drawings like the ring; extra spaces at the
+    start of a line would turn it into a code block, so they're removed first.)"""
+    st.markdown("".join(line.strip() for line in markup.splitlines()), unsafe_allow_html=True)
+
+
+def recovery_ring(score, color, zone_name, note):
+    """A WHOOP-style ring that fills up to the recovery score, in the zone's color."""
     has_score = score is not None and score == score
     filled = max(0, min(100, round(score))) if has_score else 0
     number = f"{filled}%" if has_score else "–"
+    around = 2 * math.pi * 50  # the ring's length, so we can fill part of it
     return f"""
-<div class="ring-wrap" role="img" aria-label="Recovery {number}, {html.escape(zone_name)}">
-  <div class="ring" style="--pct: {filled}; --ring-color: {color};">
-    <div class="ring-center"><div class="ring-num">{number}</div><div class="ring-cap">RECOVERY</div></div>
-  </div>
-  <div class="zone"><span class="dot" style="background:{color}"></span>{html.escape(zone_name)}</div>
-  <div class="zone-note">{html.escape(advice)} · {html.escape(when)}</div>
+<div class="ring">
+<svg viewBox="0 0 120 120" role="img" aria-label="Recovery {number}">
+<circle cx="60" cy="60" r="50" fill="none" stroke="var(--grid)" stroke-width="11"/>
+<circle cx="60" cy="60" r="50" fill="none" stroke="{color}" stroke-width="11" stroke-linecap="round"
+stroke-dasharray="{around * filled / 100:.1f} {around:.1f}" transform="rotate(-90 60 60)"/>
+<text x="60" y="63" text-anchor="middle" class="ring-num">{number}</text>
+<text x="60" y="81" text-anchor="middle" class="ring-cap">RECOVERY</text>
+</svg>
+<div class="zone"><i class="dot" style="background:{color}"></i>{html.escape(zone_name)}</div>
+<div class="zone-note">{html.escape(note)}</div>
 </div>"""
+
+
+def sparkline(values):
+    """A tiny trend line of recent values (gray, so the number stays the star)."""
+    values = [v for v in values if v is not None and v == v]
+    if len(values) < 2:
+        return ""
+    low, high = min(values), max(values)
+    width, height = 140, 34
+    points = " ".join(
+        f"{3 + i * (width - 6) / (len(values) - 1):.1f},{height - 4 - (v - low) / ((high - low) or 1) * (height - 8):.1f}"
+        for i, v in enumerate(values)
+    )
+    return (f'<svg class="spark" viewBox="0 0 {width} {height}" preserveAspectRatio="none" aria-hidden="true">'
+            f'<polyline points="{points}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round" '
+            f'stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>')
+
+
+def tile(icon, name, value, unit, change=None, digits=0, higher_is_better=True, compared_to="", trend=()):
+    """One number tile: icon + name, the value, how it compares (green/red chip), and a trend line.
+    higher_is_better can be True, False, or None (neither is better)."""
+    missing = value is None or value != value
+    shown = "–" if missing else (f"{value:.{digits}f}" if digits else f"{round(value)}")
+    if change is None or change != change:
+        chip = f'<span class="delta flat">{html.escape(compared_to)}</span>' if compared_to else ""
+    elif round(change, digits) == 0:
+        chip = f'<span class="delta flat">same</span><span class="vs">{compared_to}</span>'
+    else:
+        better = None if higher_is_better is None else (change > 0) == higher_is_better
+        style = "flat" if better is None else ("good" if better else "bad")
+        arrow = "arrow_upward" if change > 0 else "arrow_downward"
+        chip = (f'<span class="delta {style}"><span class="msr">{arrow}</span>{abs(change):.{digits}f} {unit}</span>'
+                f'<span class="vs">{compared_to}</span>')
+    return (f'<div class="tile"><div class="label"><span class="msr">{icon}</span>{name}</div>'
+            f'<div class="value">{shown}<small>{unit}</small></div>{chip}{sparkline(trend)}</div>')
+
+
+def tiles(*tiles_html):
+    return f'<div class="tiles">{"".join(tiles_html)}</div>'
+
+
+def badges(items):
+    """Small rounded tags, like "Added to Google Calendar". items: (icon, text, extra CSS class)."""
+    if not items:
+        return ""
+    return '<div class="badges">' + "".join(
+        f'<span class="badge {style}"><span class="msr">{icon}</span>{html.escape(text)}</span>'
+        for icon, text, style in items) + "</div>"
 
 
 def workout_kind(text):
     """Sort a workout into run / walk / cross-training / rest, for its icon."""
-    words = text.lower()
+    words = (text or "").lower()
     if "rest" in words:
         return "rest"
-    if any(word in words for word in ["bike", "cycl", "swim", "cross", "strength", "yoga", "elliptical"]):
+    if any(word in words for word in ["bike", "cycl", "swim", "cross", "strength", "yoga", "elliptical", "tennis"]):
         return "cross"
     if "run" in words:
         return "run"
@@ -109,28 +168,69 @@ def split_workout(text):
     return title.strip(), detail.replace(", ", " · ").strip()
 
 
-def week_grid(days):
-    """Seven equal cards for the week. Each item in `days` has:
-    weekday, day, workout, today (True/False), changed (True/False),
-    and optionally time (like "7:00 AM") and on_calendar (True/False)."""
-    cards = []
+def agenda(events):
+    """Today's events as a list. Each event: start, end (datetimes), title, calendar, kind, suggested."""
+    colors = {"cal1": "var(--s1)", "cal2": "var(--s3)", "other": "var(--muted)", "coach": "var(--s2)"}
+    rows = []
+    for event in events:
+        name = html.escape(event["title"])
+        if event["kind"] == "coach":
+            name = f'<span class="msr">directions_run</span>{name}'
+        when = "All day" if event.get("all_day") else f'{clock(event["start"])}–{clock(event["end"])}'
+        note = "Suggested by the coach · waiting for your OK" if event.get("suggested") else html.escape(event["calendar"])
+        rows.append(
+            f'<li class="{"suggested" if event.get("suggested") else ""}">'
+            f'<div class="t">{"All day" if event.get("all_day") else clock(event["start"])}</div>'
+            f'<div class="e" style="border-color:{colors[event["kind"]]}"><b>{name}</b>'
+            f'<span class="sub">{when} · {note}</span></div></li>')
+    return f'<ul class="agenda">{"".join(rows)}</ul>'
+
+
+def week_calendar(days, first_hour, last_hour, now):
+    """A Google-Calendar-style week. Each day: date, is_today, plan (icon, text, done) or None,
+    and events (start, end, title, calendar, kind, exam, suggested)."""
+    px = 38  # pixels per hour
+    height = (last_hour - first_hour) * px
+    head = ["<div></div>"]
     for day in days:
-        title, detail = split_workout(day["workout"])
-        kind = workout_kind(day["workout"]) if day["workout"] else "other"
-        scheduled = (f"<div class='time'><span class='msr'>{'event_available' if day.get('on_calendar') else 'schedule'}</span>"
-                     f"{html.escape(day['time'])}{' · on calendar' if day.get('on_calendar') else ''}</div>"
-                     if day.get("time") else "")
-        changed = ("<div class='changed'><span class='msr'>edit</span>Adjusted</div>"
-                   if day["changed"] else "")
-        cards.append(
-            f"<div class='day{' today' if day['today'] else ''}'>"
-            f"<div class='day-top'><span class='dow'>{'Today' if day['today'] else day['weekday']}</span>"
-            f"<span class='num'>{day['day']}</span></div>"
-            f"<div class='badge {kind}'><span class='msr'>{WORKOUT_ICONS[kind]}</span></div>"
-            f"<div class='title'>{html.escape(title or 'Nothing planned')}</div>"
-            f"<div class='detail'>{html.escape(detail)}</div>{scheduled}{changed}</div>"
-        )
-    return f"<div class='week'>{''.join(cards)}</div>"
+        plan = ""
+        if day["plan"]:
+            icon, text, done = day["plan"]
+            check = ' <span class="msr ok">check_circle</span>' if done else ""
+            moving = " move" if icon in ("directions_run", "directions_walk", "exercise") else ""
+            plan = f'<div class="wk-plan{moving}"><span class="msr">{icon}</span>{html.escape(text)}{check}</div>'
+        name = "Today" if day["is_today"] else day["date"].strftime("%a")
+        head.append(f'<div class="{"is-today" if day["is_today"] else ""}"><div class="wk-dow">{name}</div>'
+                    f'<div class="wk-num">{day["date"].day}</div>{plan}</div>')
+    times = "".join(
+        f'<div style="top:{(hour - first_hour) * px}px">{(hour + 11) % 12 + 1} {"AM" if hour < 12 else "PM"}</div>'
+        for hour in range(first_hour + 1, last_hour))
+    columns = []
+    for day in days:
+        lines = "".join(f'<div class="wk-line" style="top:{(hour - first_hour) * px}px"></div>'
+                        for hour in range(first_hour + 1, last_hour))
+        blocks = []
+        for event in day["events"]:
+            start = event["start"].hour + event["start"].minute / 60
+            end = start + (event["end"] - event["start"]).total_seconds() / 3600
+            top, bottom = max(start, first_hour), min(end, last_hour)
+            if bottom <= first_hour or top >= last_hour:
+                continue  # outside the hours shown
+            classes = f'wk-ev {event["kind"]}{" suggested" if event.get("suggested") else ""}'
+            title = ("★ " if event.get("exam") else "") + event["title"]
+            blocks.append(
+                f'<div class="{classes}" title="{html.escape(title)} · {clock(event["start"])}–{clock(event["end"])}" '
+                f'style="top:{(top - first_hour) * px + 1:.0f}px;height:{max((bottom - top) * px - 3, 20):.0f}px">'
+                f'<b>{html.escape(title)}</b><span>{clock(event["start"])}</span></div>')
+        now_line = ""
+        hour_now = now.hour + now.minute / 60
+        if day["is_today"] and first_hour <= hour_now < last_hour:
+            now_line = f'<div class="wk-now" style="top:{(hour_now - first_hour) * px:.0f}px"></div>'
+        columns.append(f'<div class="wk-col{" is-today" if day["is_today"] else ""}" style="height:{height}px">'
+                       f'{lines}{"".join(blocks)}{now_line}</div>')
+    return (f'<div class="wk-scroll"><div class="wk"><div class="wk-head">{"".join(head)}</div>'
+            f'<div class="wk-body"><div class="wk-times" style="height:{height}px">{times}</div>'
+            f'{"".join(columns)}</div></div></div>')
 
 
 # ---------- Showing what the agent did ----------

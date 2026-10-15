@@ -48,7 +48,7 @@ def _dark():
 
 def _surface():
     """The page background, used for the thin gaps between stacked pieces."""
-    return "#1a1a19" if _dark() else "#fcfcfb"
+    return "#1a1a19" if _dark() else "#fdfdfc"  # the card color (charts sit on cards)
 
 
 def _bar_width(count):

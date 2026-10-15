@@ -91,6 +91,12 @@ with st.container(key="card-calendar-link"):
         right.link_button("Connect", google_calendar.login_url(st.session_state.google_state, email),
                           icon=":material/link:", type="primary")
 
+ui.label("Account", "account_circle", "account")
+with st.container(key="card-account"):
+    left, right = st.columns([3, 1], vertical_alignment="center")
+    left.markdown(f":material/account_circle: **{st.user.get('name') or email}** · {email}")
+    right.button("Sign out", icon=":material/logout:", on_click=st.logout, key="signout-settings")
+
 if db.is_connected(email, "whoop") and st.button("Download 90 days of WHOOP history", icon=":material/download:"):
     try:
         with st.spinner("Downloading from WHOOP..."):

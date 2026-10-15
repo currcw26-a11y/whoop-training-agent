@@ -79,12 +79,13 @@ The database blocks public access, and only the website's server can read it.
 | `google_calendar.py` | Connects Google Calendar, finds free time, adds approved workouts |
 | `weather.py` | City lookup and forecast from Open-Meteo |
 | `charts.py` | Every chart and insight on the dashboard (built with Altair) |
-| `ui.py` | Display helpers, like the recovery ring and the agent's steps |
+| `ui.py` | Display helpers: the recovery ring, number tiles, today's agenda, the week calendar, the agent's steps |
 | `db.py` | Reads and writes the database (encrypts login tokens) |
 | `schema.sql` | Creates the database tables |
 | `privacy.py` | Privacy policy and "Delete my data" |
 | `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font |
-| `style.css` | Extra styling: cards, labels, the recovery ring, the week plan |
+| `style.css` | The look of the site (matches the demo): cards, tiles, the agenda, the week calendar |
+| `assets/` | The logo shown in the top bar (light and dark versions) |
 | `docs/index.html` | The demo website (one page, sample data) |
 
 ## Run it on your computer (Windows)
