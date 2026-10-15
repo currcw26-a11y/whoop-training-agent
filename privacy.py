@@ -11,24 +11,29 @@ ui.label("Your data", "lock", "privacy")
 st.title("Privacy")
 
 st.markdown("""
-*Last updated October 9, 2026*
+*Last updated October 15, 2026*
 
-**Training Coach** is a student project built for an AI seminar class at Wake Forest.
-It gives training suggestions, **not medical advice**.
+**Training Coach** is a student project built by Clive Curry for an AI seminar class at
+Wake Forest. It gives training suggestions, **not medical advice**.
 
 ### What it collects
 - Your **Google name and email**, so it knows who you are.
 - Your **WHOOP** recovery, heart rate variability, resting heart rate, sleep, strain,
   and workouts, but only after you press **Connect WHOOP**.
-- Your **Google Calendar** events, but only if you connect your calendar. The coach
-  uses them to find free time, and adds a workout only after you approve it.
+- Your **Google Calendar** event titles and times, but only if you connect your calendar.
+  The coach uses them to find free time. It adds a workout only after you approve it, and
+  it never changes or deletes your other events.
 - The **city** you enter, to look up the weather.
 
 ### How it's used
 - Only to show you your own data and plan your training.
-- When you press **Plan my day**, your recent numbers are sent to Anthropic's Claude
-  API, which writes the plan.
-- Your data is never sold, and never shared with anyone else.
+- When you press **Plan my day**, your recent numbers and that day's calendar events are
+  sent to Anthropic's Claude API, which writes the plan.
+- Your data is never sold, never used for ads, and never shared with anyone except as
+  described here.
+- Training Coach's use of information received from Google APIs adheres to the
+  [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),
+  including the Limited Use requirements.
 
 ### How it's protected
 - It's stored in a database that only this website's server can open.
@@ -40,7 +45,7 @@ Sign in and use the button below. It permanently deletes everything this site ha
 saved about you. You can also remove the app's access from inside the WHOOP app and
 from your Google Account's security settings.
 
-Questions? Contact the developer through GitHub: **currcw26-a11y**.
+Questions? Contact the developer, Clive Curry, through GitHub: **currcw26-a11y**.
 """)
 
 if st.user.is_logged_in:

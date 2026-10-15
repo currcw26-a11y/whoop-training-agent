@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · Training Coach</title>
+<meta name="description" content="Privacy policy for Training Coach, a student project that plans training from WHOOP data, the weather, and Google Calendar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M9 22l5-6 4 3 5-8' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f6f6f3; --card: #fdfdfc; --border: rgba(11, 11, 11, 0.08);
+  --text: #0b0b0b; --text-2: #52514e; --muted: #898781; --accent: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --card: #1a1a19; --border: rgba(255, 255, 255, 0.08);
+    --text: #ffffff; --text-2: #c3c2b7; --muted: #898781; --accent: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --card: #1a1a19; --border: rgba(255, 255, 255, 0.08);
+  --text: #ffffff; --text-2: #c3c2b7; --muted: #898781; --accent: #3987e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font: 15.5px/1.65 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.topbar { border-bottom: 1px solid var(--border); }
+.bar { max-width: 760px; margin: 0 auto; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); text-decoration: none; }
+.mark { width: 30px; height: 30px; border-radius: 9px; background: #2a78d6; display: grid; place-items: center; }
+.back { font-size: 14px; font-weight: 500; text-decoration: none; }
+main { max-width: 760px; margin: 0 auto; padding: 48px 20px 64px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 4px 0 6px; font-size: 34px; letter-spacing: -0.035em; line-height: 1.15; }
+.updated { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 8px 28px 24px; }
+h2 { font-size: 18px; letter-spacing: -0.015em; margin: 24px 0 6px; }
+ul { margin: 6px 0 0; padding-left: 20px; }
+li { margin: 4px 0; }
+p { margin: 8px 0 0; }
+.muted { color: var(--text-2); }
+footer { max-width: 760px; margin: 0 auto; padding: 0 20px 40px; color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="bar">
+    <a class="brand" href="./"><span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 32 32"><path d="M8 22l5-6 4 3 6-9" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Training Coach</a>
+    <a class="back" href="./">← Back to the demo</a>
+  </div>
+</header>
+
+<main>
+  <div class="eyebrow">Privacy policy</div>
+  <h1>Your data and Training Coach</h1>
+  <p class="updated">Last updated October 15, 2026</p>
+
+  <div class="card">
+    <h2>About this app</h2>
+    <p><b>Training Coach</b> is a student project built by Clive Curry for an AI seminar class at Wake Forest.
+      It plans each day's training from your WHOOP data, the weather, and your Google Calendar.
+      It gives training suggestions, <b>not medical advice</b>.</p>
+
+    <h2>What it collects</h2>
+    <ul>
+      <li>Your <b>Google name and email</b>, so it knows who you are when you sign in.</li>
+      <li>Your <b>WHOOP</b> recovery, heart rate variability, resting heart rate, sleep, strain, and workouts,
+        but only after you choose to connect WHOOP.</li>
+      <li>Your <b>Google Calendar</b> event titles and times, but only if you connect your calendar. The coach uses
+        them to find free time. It adds a workout only after you approve it, and it never changes or deletes your other events.</li>
+      <li>The <b>city</b> you enter, to look up the weather.</li>
+    </ul>
+
+    <h2>How it's used</h2>
+    <ul>
+      <li>Only to show you your own data and to plan your training.</li>
+      <li>When you ask for a plan, your recent numbers and that day's calendar events are sent to Anthropic's Claude API,
+        which writes the plan.</li>
+      <li>Your data is never sold, never used for ads, and never shared with anyone except as described here.</li>
+      <li>Training Coach's use of information received from Google APIs adheres to the
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+        including the Limited Use requirements.</li>
+    </ul>
+
+    <h2>How it's protected</h2>
+    <ul>
+      <li>It's stored in a database that only the website's server can open.</li>
+      <li>Your WHOOP and Google login tokens are encrypted before they're saved.</li>
+      <li>The site's font (Inter) loads from Google Fonts, so your browser contacts Google when a page opens.</li>
+    </ul>
+
+    <h2>Deleting your data</h2>
+    <p>In the app, sign in and use <b>Delete my data</b> on the Privacy page. It permanently deletes everything the app has
+      saved about you. You can also remove the app's access from inside the WHOOP app, and from your Google Account's
+      security settings at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+    <h2>Contact</h2>
+    <p class="muted">Questions? Contact the developer, Clive Curry, through GitHub:
+      <a href="https://github.com/currcw26-a11y">currcw26-a11y</a>.</p>
+  </div>
+</main>
+
+<footer>Training Coach · a student project · training suggestions only, not medical advice</footer>
+</body>
+</html>
