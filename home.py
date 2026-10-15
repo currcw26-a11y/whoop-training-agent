@@ -7,8 +7,7 @@
 
 import html
 import re
-from collections import Counter
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -86,14 +85,17 @@ def calendar_box(email, plan, connected, time_zone):
                    "and the coach will plan around your classes.")
 
 
-def chart_card(key, title, subtitle, chart, alt_text):
-    """A card with a title, a one-line explanation, and an Altair chart (or a note if there's no data yet)."""
-    with st.container(key=f"card-chart-{key}"):
-        ui.draw(f'<div class="chart-title">{title}</div><div class="chart-sub">{subtitle}</div>')
+def chart_card(key, title, subtitle, chart, alt_text, legend="", note=""):
+    """A card with a title, a one-line explanation, an optional color legend, and an Altair chart
+    (or a note if there's no data yet). An optional note goes under the chart."""
+    with st.container(key=f"card-chart-{key}", height="stretch"):  # as tall as the card next to it
+        ui.draw(f'<div class="chart-title">{title}</div><div class="chart-sub">{subtitle}</div>{legend}')
         if chart is None:
             st.caption("Not enough data yet.")
         else:
             st.altair_chart(chart, width="stretch", alt=alt_text)
+        if note:
+            ui.draw(note)
 
 
 # ---------- Signed out: the welcome page ----------
@@ -210,6 +212,18 @@ if not ready:
 
 
 # ---------- Load the WHOOP data (from the database) ----------
+# Get the newest WHOOP data by itself: once per visit, if the last download was over 3 hours ago.
+synced = profile["whoop_synced_at"]
+stale = not synced or datetime.now(timezone.utc) - datetime.fromisoformat(synced) > timedelta(hours=3)
+if stale and not st.session_state.get("auto_synced"):
+    st.session_state.auto_synced = True  # only try once per visit, even if it fails
+    try:
+        with st.spinner("Getting your latest WHOOP data..."):
+            whoop.sync(email)
+        profile = db.get_profile(email)
+    except requests.RequestException:
+        st.toast("Couldn't reach WHOOP just now. Showing your saved data.", icon=":material/cloud_off:")
+
 days = pd.DataFrame(db.get_daily_metrics(email, days=90))
 workouts = pd.DataFrame(db.get_workouts(email, days=90))
 if days.empty:
@@ -274,31 +288,38 @@ with st.container(key="card-today"):
         ))
 
 
-# ---------- Google Calendar events for this week ----------
+# ---------- Google Calendar events ----------
 monday = today - timedelta(days=today.weekday())
 plan = {row["date"]: row for row in db.get_plan(email, monday.isoformat(), (today + timedelta(days=6)).isoformat())}
-calendar_error = None
-events = []
-if calendar_connected:
-    try:
-        events = week_events(email, monday.isoformat(), str(time_zone))
-    except requests.HTTPError:
-        calendar_error = "Couldn't read your Google Calendar. If this keeps happening, connect it again on your Coaching profile."
 
-# Each calendar gets a color: the busiest one blue, the next green, any others gray. The coach's workouts are orange.
-busiest = [name for name, _ in Counter(e["calendar"] for e in events if not e["from_coach"]).most_common()]
-color_of = {name: ("cal1" if rank == 0 else "cal2" if rank == 1 else "other") for rank, name in enumerate(busiest)}
-blocks = [{
-    "start": e["start"], "end": e["end"], "title": e["title"], "calendar": e["calendar"], "all_day": e["all_day"],
-    "kind": "coach" if e["from_coach"] else color_of.get(e["calendar"], "other"),
-    "exam": bool(EXAM.search(e["title"])), "suggested": False,
-} for e in events]
-for row in plan.values():  # suggested times that are still waiting for an OK
-    if row.get("event_status") == "proposed" and row.get("event_start"):
-        begins = datetime.fromisoformat(row["event_start"]).astimezone(time_zone)
-        blocks.append({"start": begins, "end": begins + timedelta(minutes=row.get("event_minutes") or 30),
-                       "title": row.get("event_title") or "Workout", "calendar": "Training Coach",
-                       "all_day": False, "kind": "coach", "exam": False, "suggested": True})
+
+def calendar_blocks(first_day, plan_rows):
+    """Everything to draw for the week starting first_day: the person's Google Calendar events, plus
+    the coach's suggested times still waiting for an OK. Returns (blocks, error message or None)."""
+    events, error = [], None
+    if calendar_connected:
+        try:
+            events = week_events(email, first_day.isoformat(), str(time_zone))
+        except requests.HTTPError:
+            error = "Couldn't read your Google Calendar. If this keeps happening, connect it again on your Coaching profile."
+    found = [{
+        "start": e["start"], "end": e["end"], "title": e["title"], "calendar": e["calendar"], "all_day": e["all_day"],
+        # Colors stay the same every week: the coach's workouts orange, your main calendar blue,
+        # your second calendar green, any others gray.
+        "kind": "coach" if e["from_coach"] else ("cal1", "cal2")[e.get("calendar_rank", 0)]
+        if e.get("calendar_rank", 0) < 2 else "other",
+        "rank": e.get("calendar_rank", 0), "exam": bool(EXAM.search(e["title"])), "suggested": False,
+    } for e in events]
+    for row in plan_rows:
+        if row.get("event_status") == "proposed" and row.get("event_start"):
+            begins = datetime.fromisoformat(row["event_start"]).astimezone(time_zone)
+            found.append({"start": begins, "end": begins + timedelta(minutes=row.get("event_minutes") or 30),
+                          "title": row.get("event_title") or "Workout", "calendar": "Training Coach",
+                          "all_day": False, "kind": "coach", "rank": -1, "exam": False, "suggested": True})
+    return found, error
+
+
+blocks, calendar_error = calendar_blocks(monday, plan.values())  # this week (for today's list)
 
 
 # ---------- 2. The coach + today's calendar ----------
@@ -395,7 +416,10 @@ with coach_side.container(key="card-coach"):
             ui.show_steps(latest_run["steps"], raw)
 
 with agenda_side.container(key="card-agenda"):
-    todays = sorted((b for b in blocks if b["start"].date() == today), key=lambda b: (not b["all_day"], b["start"]))
+    # An all-day event can last several days, so it counts on every day it covers.
+    todays = sorted((b for b in blocks if b["start"].date() == today
+                     or (b["all_day"] and b["start"].date() <= today < b["end"].date())),
+                    key=lambda b: (not b["all_day"], b["start"]))
     label_spot, meta_spot = st.columns([3, 1])
     with label_spot:
         ui.label("Today · Google Calendar", "event", "agenda")
@@ -414,14 +438,26 @@ with agenda_side.container(key="card-agenda"):
         ui.draw(ui.agenda(todays))
 
 
-# ---------- 3. The week, on the calendar ----------
+# ---------- 3. The week, on the calendar (last week, this week, or next week) ----------
 st.write("")
-ui.label("This week · the plan on your calendar", "calendar_month", "week")
+label_spot, week_spot = st.columns([2.2, 1.6], vertical_alignment="center")
+choice = week_spot.segmented_control(
+    "Week", ["Last week", "This week", "Next week"], default="This week", required=True,
+    label_visibility="collapsed", key="week-choice",
+)
+first_day = monday + timedelta(weeks={"Last week": -1, "This week": 0, "Next week": 1}[choice])
+last_day = first_day + timedelta(days=6)
+with label_spot:
+    ui.label(f"Your week · {first_day:%b} {first_day.day} – {last_day:%b} {last_day.day}", "calendar_month", "week")
+
+week_plan = {row["date"]: row for row in db.get_plan(email, first_day.isoformat(), last_day.isoformat())}
+week_blocks, week_error = calendar_blocks(first_day, week_plan.values())  # remembered 5 minutes, so this is quick
 workout_days = set(workouts["date"].dt.date) if not workouts.empty else set()
-week, timed = [], [b for b in blocks if not b["all_day"]]
+timed = [b for b in week_blocks if not b["all_day"]]
+week = []
 for offset in range(7):
-    day = monday + timedelta(days=offset)
-    row = plan.get(day.isoformat())
+    day = first_day + timedelta(days=offset)
+    row = week_plan.get(day.isoformat())
     chip = None
     if row and (row.get("adjusted_workout") or row.get("planned_workout")):
         workout = row.get("adjusted_workout") or row.get("planned_workout")
@@ -429,36 +465,47 @@ for offset in range(7):
         name = ui.split_workout(workout)[0]
         done = day < today and (kind == "rest" or day in workout_days)
         chip = (ui.WORKOUT_ICONS[kind], name if len(name) <= 20 else name[:19] + "…", done)
-    week.append({"date": day, "is_today": day == today, "plan": chip,
-                 "events": [b for b in timed if b["start"].date() == day]})
+    week.append({
+        "date": day, "is_today": day == today, "plan": chip,
+        "events": [b for b in timed if b["start"].date() == day],
+        # An all-day event belongs to every day from its start date up to (not including) its end date.
+        "all_day": [b for b in week_blocks if b["all_day"] and b["start"].date() <= day < b["end"].date()],
+    })
 starts = [b["start"].hour for b in timed]
 ends = [b["end"].hour + (1 if b["end"].minute else 0) for b in timed if b["end"].date() == b["start"].date()]
 first_hour = max(5, min([7] + starts))
 last_hour = min(24, max([22] + ends))
 
-legend = [f'<span><i class="swatch" style="background:var({"--s1" if i == 0 else "--s3" if i == 1 else "--muted"})">'
-          f'</i>{html.escape(name)}</span>' for i, name in enumerate(busiest[:2])]
-if len(busiest) > 2:
-    legend.append('<span><i class="swatch" style="background:var(--muted)"></i>Other calendars</span>')
-legend.append('<span><i class="swatch" style="background:var(--s2)"></i>Training Coach workouts</span>')
-if any(b["suggested"] for b in blocks):
-    legend.append('<span><i class="swatch dashed"></i>Suggested, waiting for your OK</span>')
-if any(b["exam"] for b in blocks):
-    legend.append("<span>★ Exam</span>")
+names = {}
+for b in week_blocks:
+    if b["kind"] in ("cal1", "cal2"):
+        names[b["rank"]] = b["calendar"]
+week_legend = [f'<span><i class="swatch" style="background:var({"--s1" if rank == 0 else "--s3"})"></i>{html.escape(name)}</span>'
+          for rank, name in sorted(names.items())]
+if any(b["kind"] == "other" for b in week_blocks):
+    week_legend.append('<span><i class="swatch" style="background:var(--muted)"></i>Other calendars</span>')
+week_legend.append('<span><i class="swatch" style="background:var(--s2)"></i>Training Coach workouts</span>')
+if any(b["suggested"] for b in week_blocks):
+    week_legend.append('<span><i class="swatch dashed"></i>Suggested, waiting for your OK</span>')
+if any(b["exam"] for b in week_blocks):
+    week_legend.append("<span>★ Exam</span>")
+if week_error:
+    st.caption(week_error)
 with st.container(key="card-week"):
     ui.draw(ui.week_calendar(week, first_hour, last_hour, now)
-            + f'<div class="wk-foot"><div class="legend">{"".join(legend)}</div>'
+            + f'<div class="wk-foot"><div class="legend">{"".join(week_legend)}</div>'
             f'<div class="note">The coach only adds a workout after you approve it.</div></div>')
 
 
 # ---------- 4. Trends ----------
 st.write("")
 label_spot, range_spot, refresh_spot = st.columns([2.2, 1.6, 1], vertical_alignment="center")
-with label_spot:
-    ui.label("Trends", "insights", "trends")
 span = range_spot.segmented_control(
     "Time range", ["7 days", "30 days", "90 days"], default="30 days", required=True, label_visibility="collapsed",
 )
+count = int(span.split()[0])
+with label_spot:
+    ui.label(f"Trends · last {count} days", "insights", "trends")
 if refresh_spot.button("Refresh WHOOP", icon=":material/sync:", width="stretch"):
     try:
         with st.spinner("Downloading from WHOOP..."):
@@ -467,34 +514,72 @@ if refresh_spot.button("Refresh WHOOP", icon=":material/sync:", width="stretch")
     except requests.HTTPError as error:
         whoop_error(error)
 
-count = int(span.split()[0])
-start = pd.Timestamp(today - timedelta(days=count - 1))
-shown = days[days["date"] >= start]
-shown_workouts = workouts[workouts["date"] >= start] if not workouts.empty else workouts
+start_day = today - timedelta(days=count - 1)  # every chart shows this whole range, even days with no data
+shown = days[days["date"] >= pd.Timestamp(start_day)]
+shown_workouts = workouts[workouts["date"] >= pd.Timestamp(start_day)] if not workouts.empty else workouts
 weeks = max(4, count // 7)
+if days["date"].min().date() > start_day:
+    st.caption(f"Your WHOOP data starts {days['date'].min():%b} {days['date'].min().day}, so the left side is empty.")
+
+
+def chart_legend(*items):
+    """A row of colored swatches with labels, drawn above a chart."""
+    return '<div class="legend chart-legend">' + "".join(
+        f'<span><i class="{"swatch dashed" if color == "dashed" else "swatch"}" '
+        f'style="{"" if color == "dashed" else f"background:{color}"}"></i>{text}</span>' for color, text in items) + "</div>"
+
+
+# The running card: miles done (WHOOP) and planned (the coach), plus the goal.
+weekly = charts.weekly_running(workouts, list(db.get_plan(email, monday.isoformat(),
+                                                           (monday + timedelta(days=13)).isoformat())), today, weeks)
+this_week, last_week = weekly[weekly["when"] == "now"].iloc[0], weekly[weekly["when"] == "past"].iloc[-1]
+if this_week["planned"] > 0:
+    growth = ""
+    if last_week["done"] > 0:
+        percent = 100 * (this_week["planned"] - last_week["done"]) / last_week["done"]
+        growth = f", {'up' if percent >= 0 else 'down'} {abs(percent):.0f}% from last week"
+    run_note = (f'<div class="run-note"><span class="msr">check_circle</span>This week\'s plan: '
+                f'{this_week["planned"]:g} miles{growth}. Done so far: {this_week["done"]:g}.</div>')
+else:
+    run_note = ('<div class="run-note"><span class="msr">info</span>No runs planned this week yet. '
+                'Press Plan my day and the coach will plan some.</div>')
+goal = profile.get("goal") or "Set a goal on your Coaching profile"
+if profile.get("goal_date"):
+    goal_day = date.fromisoformat(profile["goal_date"])
+    goal += f" · {goal_day:%b} {goal_day.day}"
 
 top_left, top_right = st.columns(2, gap="medium")
 with top_left:
     chart_card("recovery", "Recovery each morning", "How ready your body is to train, from WHOOP.",
-               charts.recovery_chart(shown), f"Bar chart of daily recovery over the last {count} days, colored by zone.")
+               charts.recovery_chart(shown, start_day, today),
+               f"Bar chart of daily recovery over the last {count} days, colored by zone.",
+               chart_legend(("var(--good)", "Green 67–100%"), ("var(--warn)", "Yellow 34–66%"), ("var(--bad)", "Red 0–33%")))
 with top_right:
-    chart_card("hrv", "Heart rate variability", "Higher usually means more recovered. The band is your normal range.",
-               charts.trend_chart(shown, "hrv_ms", "HRV", "ms"), "Line chart of daily HRV with your normal range shaded.")
+    chart_card("hrv", "Heart rate variability", "Higher usually means more recovered.",
+               charts.trend_chart(shown, "hrv_ms", "HRV", "ms", start_day, today),
+               "Line chart of daily HRV with your normal range shaded.",
+               chart_legend(("var(--s1)", "Your HRV (ms)"), ("var(--s1-tint)", "Your normal range")))
 bottom_left, bottom_right = st.columns(2, gap="medium")
 with bottom_left:
     chart_card("sleep", "Sleep stages", "Each night, stacked. The gray tick is how much sleep you needed.",
-               charts.sleep_chart(shown), "Stacked bar chart of sleep stages each night, with sleep needed marked.")
+               charts.sleep_chart(shown, start_day, today),
+               "Stacked bar chart of sleep stages each night, with sleep needed marked.",
+               chart_legend(("var(--s1)", "Deep"), ("var(--s2)", "REM"), ("var(--s3)", "Light"), ("var(--s4)", "Awake"),
+                      ("var(--muted)", "Needed")))
 with bottom_right:
-    chart_card("miles", "Running miles per week", "Growing about 10% a week at most helps avoid injuries.",
-               charts.weekly_miles_chart(workouts, today, weeks), f"Bar chart of running miles for the last {weeks} weeks.")
+    chart_card("miles", "Running miles per week", f"Goal: {html.escape(goal)}",
+               charts.weekly_miles_chart(weekly), f"Bar chart of running miles for the last {weeks} weeks and next week's plan.",
+               chart_legend(("var(--s1)", "Miles run"), ("dashed", "Planned by the coach")), run_note)
 
 with st.expander("More charts", icon=":material/stacked_line_chart:"):
     left, right = st.columns(2, gap="large")
     with left:
         ui.draw('<div class="chart-title">Resting heart rate</div><div class="chart-sub">Lower usually means more recovered.</div>')
-        st.altair_chart(charts.trend_chart(shown, "resting_hr", "Resting HR", "bpm"), width="stretch",
-                        alt="Line chart of daily resting heart rate with your normal range shaded.")
-        ui.draw('<div class="chart-title">How hard you trained</div><div class="chart-sub">Minutes in easy, moderate, and hard heart-rate zones each week.</div>')
+        resting = charts.trend_chart(shown, "resting_hr", "Resting HR", "bpm", start_day, today)
+        if resting is not None:
+            st.altair_chart(resting, width="stretch", alt="Line chart of daily resting heart rate with your normal range.")
+        ui.draw('<div class="chart-title">How hard you trained</div><div class="chart-sub">Minutes in easy, moderate, and hard heart-rate zones each week.</div>'
+                + chart_legend(("#86b6ef", "Easy (zones 1-2)"), ("#2a78d6", "Moderate (zone 3)"), ("#184f95", "Hard (zones 4-5)")))
         effort = charts.effort_chart(workouts, today, weeks)
         if effort is None:
             st.caption("No heart-rate zone data yet.")
@@ -508,13 +593,13 @@ with st.expander("More charts", icon=":material/stacked_line_chart:"):
             st.altair_chart(scatter, width="stretch", alt="Scatter plot of hours asleep against recovery.")
     with right:
         ui.draw('<div class="chart-title">When you slept</div><div class="chart-sub">Falling asleep (top) to waking up (bottom). Bars that line up mean a steady schedule.</div>')
-        bedtimes = charts.bedtime_chart(shown, time_zone)
+        bedtimes = charts.bedtime_chart(shown, time_zone, start_day, today)
         if bedtimes is None:
             st.caption("No bedtimes saved yet.")
         else:
             st.altair_chart(bedtimes, width="stretch", alt="Chart of when you fell asleep and woke up each night.")
         ui.draw('<div class="chart-title">Day strain</div><div class="chart-sub">How hard each whole day was on your body (0-21).</div>')
-        st.altair_chart(charts.strain_chart(shown), width="stretch", alt="Bar chart of WHOOP day strain each day.")
+        st.altair_chart(charts.strain_chart(shown, start_day, today), width="stretch", alt="Bar chart of WHOOP day strain.")
         ui.draw('<div class="chart-title">Your best day of the week</div><div class="chart-sub">Average recovery for each weekday.</div>')
         weekdays = charts.weekday_chart(shown)
         if weekdays is None:
@@ -528,16 +613,10 @@ st.write("")
 ui.label("Insights · patterns in your own data", "lightbulb", "insights")
 found = charts.insights(shown, shown_workouts, time_zone)
 if found:
-    for first in range(0, len(found), 4):
-        for spot, (number, (icon, title, headline, explanation)) in zip(
-                st.columns(4, gap="medium"), enumerate(found[first:first + 4], start=first)):
-            with spot.container(key=f"card-insight-{number}"):
-                ui.label(title, icon, f"insight-{number}")
-                ui.draw(f'<div class="insight-big">{html.escape(headline)}</div>'
-                        f'<div class="insight-text">{html.escape(explanation)}</div>')
+    ui.draw(ui.insight_cards(found))
 else:
-    st.info("Not enough data for patterns yet. Try the 90-day range, or check back in a couple of weeks.",
-            icon=":material/info:")
+    st.info("Not enough data for patterns in this time range yet. Try 30 or 90 days.", icon=":material/info:")
+st.write("")
 
 with st.expander("See every number as a table", icon=":material/table_chart:"):
     columns = {

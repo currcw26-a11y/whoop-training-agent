@@ -114,10 +114,12 @@ def _when(text, time_zone):
 def list_events(email, start, end, time_zone):
     """Every event between two times, from each calendar the person shows in Google Calendar."""
     calendars = _call(email, "GET", "/users/me/calendarList")["items"]
+    # Calendars the person has hidden in Google Calendar are skipped. The main calendar comes first,
+    # so its "rank" is 0; the website uses the rank to give each calendar the same color every week.
+    shown = [c for c in calendars if c.get("selected") or c.get("primary")]
+    shown.sort(key=lambda c: not c.get("primary"))
     events = []
-    for calendar in calendars:
-        if not calendar.get("selected") and not calendar.get("primary"):
-            continue  # calendars the person has hidden in Google Calendar are skipped
+    for rank, calendar in enumerate(shown):
         page = _call(email, "GET", f"/calendars/{quote(calendar['id'], safe='')}/events", params={
             "timeMin": start.isoformat(), "timeMax": end.isoformat(),
             "singleEvents": "true", "orderBy": "startTime", "maxResults": 250,
@@ -130,6 +132,7 @@ def list_events(email, start, end, time_zone):
             events.append({
                 "title": item.get("summary", "(busy)"),
                 "calendar": calendar.get("summaryOverride") or calendar.get("summary", ""),
+                "calendar_rank": rank,
                 "start": _when(item["start"].get("dateTime") or item["start"]["date"], time_zone),
                 "end": _when(item["end"].get("dateTime") or item["end"]["date"], time_zone),
                 "all_day": "date" in item["start"],

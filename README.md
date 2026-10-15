@@ -20,6 +20,7 @@ with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
 - [x] **Phase 2:** The agent: weather plus a Claude tool-use loop behind a "Plan my day" button
 - [x] **Design pass:** Dashboard, charts, insights, and light and dark mode
 - [x] **Phase 3:** Google Calendar. The agent suggests a workout time, and nothing is added until you approve it
+- [x] **Dashboard update:** last, this, and next week on the calendar (with all-day events), 7/30/90-day trends, running miles done vs. planned, and WHOOP data that downloads itself
 - [ ] **Phase 4:** Put it online (Streamlit Community Cloud)
 - [ ] **Phase 5:** Screen Time, and how late-night phone use affects sleep
 - [ ] **Phase 6 (optional):** A morning plan sent automatically
@@ -71,7 +72,7 @@ The database blocks public access, and only the website's server can read it.
 | File | What it does |
 |---|---|
 | `app.py` | Starts the website and lists its pages |
-| `home.py` | The main page: today's numbers, the coach, this week's plan, and charts |
+| `home.py` | The main page: today's numbers, the coach, the week on your calendar, trends, and insights |
 | `settings.py` | The "Coaching profile" page: goal, city, run times, connections |
 | `agent.py` | The AI coach: its instructions, its tools, and the tool-use loop |
 | `config.py` | Settings: which Claude model, step limit, daily run limits, prices |

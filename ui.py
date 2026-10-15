@@ -188,7 +188,7 @@ def agenda(events):
 
 def week_calendar(days, first_hour, last_hour, now):
     """A Google-Calendar-style week. Each day: date, is_today, plan (icon, text, done) or None,
-    and events (start, end, title, calendar, kind, exam, suggested)."""
+    events (start, end, title, calendar, kind, exam, suggested), and all_day (same, for all-day events)."""
     px = 38  # pixels per hour
     height = (last_hour - first_hour) * px
     head = ["<div></div>"]
@@ -202,6 +202,14 @@ def week_calendar(days, first_hour, last_hour, now):
         name = "Today" if day["is_today"] else day["date"].strftime("%a")
         head.append(f'<div class="{"is-today" if day["is_today"] else ""}"><div class="wk-dow">{name}</div>'
                     f'<div class="wk-num">{day["date"].day}</div>{plan}</div>')
+    # All-day events (like "Fall break" or a due date) get their own row, like in Google Calendar.
+    all_day = ['<div class="wk-allday-label">All day</div>']
+    for day in days:
+        chips = "".join(f'<div class="wk-chip {e["kind"]}" title="{html.escape(e["title"])}">'
+                        f'{"★ " if e.get("exam") else ""}{html.escape(e["title"])}</div>' for e in day["all_day"][:3])
+        if len(day["all_day"]) > 3:
+            chips += f'<div class="wk-more">+{len(day["all_day"]) - 3} more</div>'
+        all_day.append(f'<div class="{"is-today" if day["is_today"] else ""}">{chips}</div>')
     times = "".join(
         f'<div style="top:{(hour - first_hour) * px}px">{(hour + 11) % 12 + 1} {"AM" if hour < 12 else "PM"}</div>'
         for hour in range(first_hour + 1, last_hour))
@@ -228,9 +236,20 @@ def week_calendar(days, first_hour, last_hour, now):
             now_line = f'<div class="wk-now" style="top:{(hour_now - first_hour) * px:.0f}px"></div>'
         columns.append(f'<div class="wk-col{" is-today" if day["is_today"] else ""}" style="height:{height}px">'
                        f'{lines}{"".join(blocks)}{now_line}</div>')
-    return (f'<div class="wk-scroll"><div class="wk"><div class="wk-head">{"".join(head)}</div>'
+    all_day_row = f'<div class="wk-allday">{"".join(all_day)}</div>' if any(d["all_day"] for d in days) else ""
+    return (f'<div class="wk-scroll"><div class="wk"><div class="wk-head">{"".join(head)}</div>{all_day_row}'
             f'<div class="wk-body"><div class="wk-times" style="height:{height}px">{times}</div>'
             f'{"".join(columns)}</div></div></div>')
+
+
+def insight_cards(found):
+    """Up to 4 insight cards in one even row (they all get the same height)."""
+    cards = "".join(
+        f'<div class="insight"><div class="k"><span class="msr">{icon}</span>{html.escape(title)}</div>'
+        f'<div class="big">{html.escape(headline)}</div><p>{html.escape(text)}</p>'
+        f'<div class="count">{html.escape(count)}</div></div>'
+        for icon, title, headline, text, count in found[:4])
+    return f'<div class="insights">{cards}</div>'
 
 
 # ---------- Showing what the agent did ----------
