@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training Coach · Clive Curry</title>
+<meta name="description" content="A demo of Training Coach, an AI running coach that plans each day from WHOOP data, the weather, and Google Calendar. Shown with sample data.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M9 22l5-6 4 3 5-8' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=block">
+<style>
+/* ---------- Colors (light mode first, dark mode below) ---------- */
+:root {
+  color-scheme: light;
+  --page: #f6f6f3; --card: #fdfdfc; --raised: #f1f0ec;
+  --border: rgba(11, 11, 11, 0.08); --border-strong: rgba(11, 11, 11, 0.14);
+  --text: #0b0b0b; --text-2: #52514e; --muted: #898781;
+  --grid: #e7e6e0; --axis: #c3c2b7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s1-tint: rgba(42, 120, 214, 0.11); --s2-tint: rgba(235, 104, 52, 0.12); --s3-tint: rgba(27, 175, 122, 0.13);
+  --good: #0ca30c; --warn: #fab219; --bad: #d03b3b;
+  --good-text: #006300; --bad-text: #b02a2a;
+  --good-chip: rgba(12, 163, 12, 0.11); --bad-chip: rgba(208, 59, 59, 0.10);
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 6px 20px rgba(11, 11, 11, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --card: #1a1a19; --raised: #232322;
+    --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s1-tint: rgba(57, 135, 229, 0.20); --s2-tint: rgba(217, 89, 38, 0.20); --s3-tint: rgba(25, 158, 112, 0.22);
+    --good-text: #0ca30c; --bad-text: #e66767;
+    --good-chip: rgba(12, 163, 12, 0.16); --bad-chip: rgba(230, 103, 103, 0.15);
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --card: #1a1a19; --raised: #232322;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #ffffff; --text-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s1-tint: rgba(57, 135, 229, 0.20); --s2-tint: rgba(217, 89, 38, 0.20); --s3-tint: rgba(25, 158, 112, 0.22);
+  --good-text: #0ca30c; --bad-text: #e66767;
+  --good-chip: rgba(12, 163, 12, 0.16); --bad-chip: rgba(230, 103, 103, 0.15);
+  --shadow: none;
+}
+
+/* ---------- Page ---------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0; background: var(--page); color: var(--text);
+  font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--s1); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.icon {
+  font-family: "Material Symbols Rounded"; font-weight: 400; font-style: normal; font-size: 20px;
+  line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr;
+  display: inline-block; vertical-align: -4px; font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 450, "opsz" 24;
+}
+.icon.fill { font-variation-settings: "FILL" 1, "wght" 450, "opsz" 24; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--page) 86%, transparent);
+  backdrop-filter: saturate(160%) blur(12px); -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -0.01em; }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; background: var(--s1); color: #fff;
+  display: grid; place-items: center;
+}
+.brand-mark .icon { font-size: 19px; vertical-align: 0; }
+nav { display: flex; gap: 4px; }
+nav a { color: var(--text-2); padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+nav a:hover { background: var(--raised); color: var(--text); text-decoration: none; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px; background: var(--raised); color: var(--text-2);
+}
+.pill .icon { font-size: 15px; vertical-align: 0; }
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--s1-tint); color: var(--s1); font-size: 13px; font-weight: 700;
+}
+.who { font-size: 14px; font-weight: 500; }
+@media (max-width: 760px) { nav, .who { display: none; } }
+.brand, .pill { white-space: nowrap; }
+@media (max-width: 480px) { .pill .long { display: none; } }
+
+/* ---------- Layout ---------- */
+main { padding: 40px 0 56px; }
+section { margin-top: 36px; }
+.eyebrow {
+  display: flex; align-items: center; gap: 6px; margin: 0 0 12px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
+}
+.eyebrow .icon { font-size: 17px; vertical-align: 0; }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+  padding: 22px 24px; box-shadow: var(--shadow);
+}
+.row { display: grid; gap: 16px; }
+.row.coach-row { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); margin-top: 16px; }
+.row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) { .row.coach-row, .row.two { grid-template-columns: minmax(0, 1fr); } }
+h1 { margin: 2px 0 0; font-size: 32px; line-height: 1.15; letter-spacing: -0.035em; font-weight: 700; }
+h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+.sub { color: var(--text-2); font-size: 14px; margin: 3px 0 0; }
+.muted { color: var(--muted); }
+
+/* ---------- Greeting ---------- */
+.greeting { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.date { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.weather {
+  display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--border); font-size: 14px;
+}
+.weather .icon { font-size: 22px; color: var(--s4); vertical-align: 0; }
+.weather b { font-weight: 650; }
+
+/* ---------- Today card ---------- */
+.today-card { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px; align-items: center; margin-top: 18px; }
+@media (max-width: 760px) { .today-card { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+.ring { text-align: center; }
+.ring svg { width: 156px; height: 156px; display: block; margin: 0 auto; }
+.ring .num { font-size: 34px; font-weight: 700; letter-spacing: -0.04em; fill: var(--text); }
+.ring .cap { font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; fill: var(--muted); }
+.zone { margin-top: 10px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.zone-note { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: 100%; }
+@media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--raised); border-radius: 14px; padding: 14px 14px 10px; }
+.tile .label { font-size: 13px; color: var(--text-2); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.tile .label .icon { font-size: 17px; vertical-align: 0; }
+.tile .value { font-size: 26px; font-weight: 650; letter-spacing: -0.03em; margin-top: 4px; }
+.tile .value small { font-size: 14px; font-weight: 500; color: var(--text-2); letter-spacing: 0; margin-left: 2px; }
+.delta { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+.delta .icon { font-size: 14px; vertical-align: 0; }
+.delta.good { color: var(--good-text); background: var(--good-chip); }
+.delta.bad { color: var(--bad-text); background: var(--bad-chip); }
+.delta.flat { color: var(--text-2); background: var(--card); }
+.vs { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.spark { display: block; width: 100%; height: 34px; margin-top: 8px; }
+
+/* ---------- Coach card ---------- */
+.card-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.meta { font-size: 12px; color: var(--muted); }
+.headline { font-size: 28px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.15; margin-top: 10px; }
+.when { color: var(--text-2); margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.when .icon { font-size: 18px; }
+.why { margin: 14px 0 0; color: var(--text); }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+  padding: 6px 11px; border-radius: 10px; background: var(--raised); color: var(--text-2);
+}
+.badge .icon { font-size: 17px; vertical-align: 0; }
+.badge.on-cal { background: var(--s2-tint); color: var(--text); }
+.badge.on-cal .icon { color: var(--s2); }
+details.steps { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+details.steps summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: 14px; color: var(--text);
+}
+details.steps summary::-webkit-details-marker { display: none; }
+details.steps summary .chev { margin-left: auto; color: var(--muted); transition: transform 0.15s; }
+details.steps[open] summary .chev { transform: rotate(180deg); }
+.step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 7px 0; font-size: 14px; }
+.step + .step { border-top: 1px dashed var(--border); }
+.step .icon { color: var(--s1); font-size: 19px; }
+.step code { font: 600 13px/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.step .out { color: var(--text-2); }
+.step.thought { color: var(--text-2); font-style: italic; }
+.step.thought .icon { color: var(--muted); }
+.step.done .icon { color: var(--good); }
+
+/* ---------- Today's schedule ---------- */
+.agenda { list-style: none; margin: 14px 0 0; padding: 0; }
+.agenda li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; padding: 9px 0; align-items: start; }
+.agenda li + li { border-top: 1px solid var(--border); }
+.agenda .t { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; padding-top: 1px; }
+.agenda .e { border-left: 3px solid; padding-left: 10px; }
+.agenda .e b { font-weight: 600; display: block; }
+.agenda .e span { font-size: 12.5px; color: var(--muted); }
+.agenda li.coach .e b { display: flex; align-items: center; gap: 6px; }
+.agenda li.coach .e b .icon { font-size: 17px; color: var(--s2); vertical-align: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.tick-swatch { width: 14px; height: 2px; background: var(--muted); display: inline-block; }
+
+/* ---------- Week calendar ---------- */
+.cal-card { padding: 0; overflow: hidden; }
+.cal-scroll { overflow-x: auto; }
+.cal { min-width: 820px; }
+.cal-head, .cal-body { display: grid; grid-template-columns: 54px repeat(7, minmax(0, 1fr)); }
+.cal-head { border-bottom: 1px solid var(--border); }
+.cal-head > div { padding: 12px 10px 12px; border-left: 1px solid var(--border); }
+.cal-head > div:first-child { border-left: 0; }
+.cal-head .dow { font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.cal-head .num { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; }
+.cal-head .is-today .num { color: #fff; background: var(--s1); border-radius: 999px; display: inline-grid; place-items: center; width: 34px; height: 34px; font-size: 18px; }
+.plan-chip { margin-top: 6px; display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.plan-chip .icon { font-size: 16px; vertical-align: 0; }
+.plan-chip.run .icon { color: var(--s2); }
+.plan-chip .ok { color: var(--good); font-size: 15px; }
+.times { position: relative; }
+.times div { position: absolute; right: 8px; font-size: 11px; color: var(--muted); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+.day-col { position: relative; border-left: 1px solid var(--border); }
+.day-col.is-today { background: color-mix(in srgb, var(--s1) 5%, transparent); }
+.hour-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
+.ev {
+  position: absolute; left: 4px; right: 4px; border-radius: 7px; padding: 4px 7px; overflow: hidden;
+  font-size: 11.5px; line-height: 1.3; border-left: 3px solid;
+}
+.ev b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev span { color: var(--text-2); font-size: 11px; }
+.ev.classes { background: var(--s1-tint); border-color: var(--s1); }
+.ev.personal { background: var(--s3-tint); border-color: var(--s3); }
+.ev.coach { background: var(--s2-tint); border-color: var(--s2); }
+.ev.exam b::before { content: "★ "; }
+.now-line { position: absolute; left: 0; right: 0; border-top: 2px solid var(--bad); }
+.now-line::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+.cal-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 18px; border-top: 1px solid var(--border); }
+
+/* ---------- Charts ---------- */
+.chart-card h2 { display: flex; align-items: center; gap: 8px; }
+.chart-card .legend { margin-top: 12px; }
+.chart { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
+.chart .grid { stroke: var(--grid); stroke-width: 1; }
+.chart .base { stroke: var(--axis); stroke-width: 1; }
+.chart text { font: 11px Inter, system-ui, sans-serif; fill: var(--muted); }
+.chart text.end { font-weight: 650; fill: var(--text); font-size: 12px; }
+.chart .hit { fill: transparent; }
+.chart .hit:hover + .hover, .chart g.pt:hover .ring-dot { opacity: 1; }
+.chart .ring-dot { opacity: 0; }
+.note { margin-top: 10px; font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.note .icon { font-size: 17px; color: var(--good); }
+details.table { margin-top: 16px; }
+details.table summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.table-scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+/* ---------- Insights ---------- */
+.insights { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1000px) { .insights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .insights { grid-template-columns: minmax(0, 1fr); } }
+.insight .k { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.insight .k .icon { font-size: 17px; color: var(--s1); vertical-align: 0; }
+.insight .big { font-size: 28px; font-weight: 700; letter-spacing: -0.035em; margin-top: 8px; }
+.insight p { margin: 6px 0 0; color: var(--text-2); font-size: 13.5px; }
+
+/* ---------- Footer ---------- */
+footer { border-top: 1px solid var(--border); padding: 26px 0 40px; color: var(--text-2); font-size: 13.5px; }
+footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+footer p { margin: 0; max-width: 640px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark"><span class="icon fill">directions_run</span></span>Training Coach</div>
+    <nav aria-label="Sections">
+      <a href="#today">Today</a><a href="#week">Week</a><a href="#trends">Trends</a><a href="#insights">Insights</a>
+    </nav>
+    <div class="top-right">
+      <span class="pill" title="Everything on this page is made-up sample data"><span class="icon">science</span>Demo<span class="long"> · sample data</span></span>
+      <span class="avatar" aria-hidden="true">CC</span><span class="who">Clive Curry</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===== Today ===== -->
+  <section id="today" style="margin-top: 0">
+    <div class="greeting">
+      <div>
+        <div class="date">Thursday, October 15</div>
+        <h1>Good morning, Clive</h1>
+      </div>
+      <div class="weather" title="Forecast from Open-Meteo">
+        <span class="icon fill">sunny</span><b>54–76°F</b><span class="muted">Sunny · 0% rain · Winston-Salem</span>
+      </div>
+    </div>
+
+    <div class="card today-card" style="margin-top: 18px">
+      <div class="ring" id="ring"></div>
+      <div class="tiles" id="tiles"></div>
+    </div>
+
+    <div class="row coach-row">
+      <div class="card">
+        <div class="card-top">
+          <div class="eyebrow" style="margin: 0"><span class="icon">auto_awesome</span>Today's workout</div>
+          <div class="meta">Planned 6:42 AM · 11 tools · $0.004 · claude-haiku-5-5</div>
+        </div>
+        <div class="headline">Easy run, 2 miles</div>
+        <div class="when"><span class="icon">schedule</span>7:00–7:40 AM · easy, conversational pace</div>
+        <p class="why">Recovery is 72% (green), HRV is 68 ms against your normal of 64, and you slept 7.6 of the
+          8.1 hours you needed. You have club tennis at 4:00, so keep this run short and easy, and go before your
+          9:30 class while it's 56°F and dry. This is Wednesday's run, moved here because your recovery was only 48% yesterday.</p>
+        <div class="badges">
+          <span class="badge on-cal"><span class="icon">event_available</span>Added to Google Calendar</span>
+          <span class="badge"><span class="icon">edit_calendar</span>Moved from Wednesday</span>
+        </div>
+        <details class="steps">
+          <summary><span class="icon">account_tree</span>How the coach decided <span class="muted" style="font-weight:500">· 11 tools</span><span class="icon chev">expand_more</span></summary>
+          <div id="steps"></div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="eyebrow" style="margin: 0"><span class="icon">event</span>Today · Google Calendar</div>
+          <div class="meta">6 events</div>
+        </div>
+        <ul class="agenda" id="agenda"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Week ===== -->
+  <section id="week">
+    <div class="eyebrow"><span class="icon">calendar_month</span>This week · the plan on your calendar</div>
+    <div class="card cal-card">
+      <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+      <div class="cal-foot">
+        <div class="legend">
+          <span><i class="swatch" style="background: var(--s1)"></i>WFU Classes</span>
+          <span><i class="swatch" style="background: var(--s3)"></i>Tennis &amp; personal</span>
+          <span><i class="swatch" style="background: var(--s2)"></i>Training Coach workouts</span>
+          <span>★ Exam</span>
+        </div>
+        <div class="meta">The coach only adds a workout after you approve it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Trends ===== -->
+  <section id="trends">
+    <div class="eyebrow"><span class="icon">insights</span>Trends · last 30 days</div>
+    <div class="row two">
+      <div class="card chart-card">
+        <h2>Recovery each morning</h2>
+        <p class="sub">How ready your body is to train, from WHOOP.</p>
+        <div class="legend">
+          <span><i class="swatch" style="background: var(--good)"></i>Green 67–100%</span>
+          <span><i class="swatch" style="background: var(--warn)"></i>Yellow 34–66%</span>
+          <span><i class="swatch" style="background: var(--bad)"></i>Red 0–33%</span>
+        </div>
+        <svg class="chart" id="recovery-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of daily recovery for the last 30 days"></svg>
+      </div>
+      <div class="card chart-card">
+        <h2>Heart rate variability</h2>
+        <p class="sub">Higher usually means more recovered. The band is your normal range.</p>
+        <svg class="chart" id="hrv-chart" viewBox="0 0 520 210" role="img" aria-label="Line chart of daily HRV with your normal range shaded" style="margin-top: 34px"></svg>
+      </div>
+      <div class="card chart-card">
+        <h2>Sleep stages</h2>
+        <p class="sub">Each night, stacked. The gray tick is how much sleep you needed.</p>
+        <div class="legend">
+          <span><i class="swatch" style="background: var(--s1)"></i>Deep</span>
+          <span><i class="swatch" style="background: var(--s2)"></i>REM</span>
+          <span><i class="swatch" style="background: var(--s3)"></i>Light</span>
+          <span><i class="swatch" style="background: var(--s4)"></i>Awake</span>
+          <span><i class="tick-swatch"></i>Needed</span>
+        </div>
+        <svg class="chart" id="sleep-chart" viewBox="0 0 520 210" role="img" aria-label="Stacked bar chart of sleep stages each night"></svg>
+      </div>
+      <div class="card chart-card">
+        <h2>Running miles per week</h2>
+        <p class="sub">Growing about 10% a week at most helps avoid injuries.</p>
+        <svg class="chart" id="miles-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of running miles for the last 6 weeks" style="margin-top: 34px"></svg>
+        <div class="note"><span class="icon">check_circle</span>This week's plan: 7.5 miles, up 7% from last week.</div>
+      </div>
+    </div>
+    <details class="table card" style="margin-top: 16px">
+      <summary>See every number as a table</summary>
+      <div class="table-scroll"><table id="table"></table></div>
+    </details>
+  </section>
+
+  <!-- ===== Insights ===== -->
+  <section id="insights">
+    <div class="eyebrow"><span class="icon">lightbulb</span>Insights · patterns in your own data</div>
+    <div class="insights">
+      <div class="card insight">
+        <div class="k"><span class="icon">bedtime</span>Sleep</div>
+        <div class="big">62% vs 49%</div>
+        <p>Your average recovery after 7+ hours of sleep (24 nights), compared with shorter nights (6 nights).</p>
+      </div>
+      <div class="card insight">
+        <div class="k"><span class="icon">sports_tennis</span>Tennis days</div>
+        <div class="big">−6 points</div>
+        <p>Your recovery the morning after club tennis, compared with other days. The coach plans easier runs then.</p>
+      </div>
+      <div class="card insight">
+        <div class="k"><span class="icon">school</span>Exam stress</div>
+        <div class="big">HRV −9%</div>
+        <p>In the 3 days before your last exam, compared with your normal. Training stays light around exams.</p>
+      </div>
+      <div class="card insight">
+        <div class="k"><span class="icon">favorite</span>Easy vs hard</div>
+        <div class="big">74% easy</div>
+        <p>Share of your training time in easy heart-rate zones. Many coaches suggest about 80% for new runners.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b style="color: var(--text)">Training Coach</b> by Clive Curry, for an AI seminar at Wake Forest.
+      This page is a demo with <b>sample data</b>. The real app connects to WHOOP and Google Calendar, and a Claude
+      agent (claude-haiku-5-5) plans each day by calling 11 tools. Training suggestions only, not medical advice.</p>
+    <p><a href="https://github.com/currcw26-a11y/whoop-training-agent">See the code on GitHub</a></p>
+  </div>
+</footer>
+
+<script>
+// ---------- Sample data (made up) ----------
+const DAYS = [{"date":"2026-09-16","recovery":53,"sleep":7.1,"hrv":66,"rhr":55,"need":7.6,"deep":1.57,"rem":1.75,"light":3.78,"awake":0.37,"strain":7.8},{"date":"2026-09-17","recovery":64,"sleep":7.1,"hrv":68,"rhr":54,"need":8.0,"deep":1.61,"rem":1.79,"light":3.7,"awake":0.55,"strain":8.5},{"date":"2026-09-18","recovery":43,"sleep":7.1,"hrv":57,"rhr":55,"need":8.2,"deep":1.32,"rem":1.53,"light":4.25,"awake":0.36,"strain":10.5},{"date":"2026-09-19","recovery":54,"sleep":7.4,"hrv":62,"rhr":56,"need":8.2,"deep":1.36,"rem":1.92,"light":4.12,"awake":0.36,"strain":10.1},{"date":"2026-09-20","recovery":58,"sleep":7.0,"hrv":64,"rhr":55,"need":8.3,"deep":1.52,"rem":1.58,"light":3.9,"awake":0.58,"strain":6.5},{"date":"2026-09-21","recovery":74,"sleep":7.4,"hrv":61,"rhr":56,"need":7.3,"deep":1.64,"rem":1.49,"light":4.27,"awake":0.38,"strain":11.8},{"date":"2026-09-22","recovery":74,"sleep":7.7,"hrv":67,"rhr":52,"need":8.0,"deep":1.36,"rem":1.74,"light":4.6,"awake":0.66,"strain":9.6},{"date":"2026-09-23","recovery":48,"sleep":6.7,"hrv":66,"rhr":55,"need":8.0,"deep":1.21,"rem":1.71,"light":3.78,"awake":0.63,"strain":13.0},{"date":"2026-09-24","recovery":71,"sleep":7.4,"hrv":66,"rhr":55,"need":7.9,"deep":1.6,"rem":1.72,"light":4.08,"awake":0.4,"strain":12.2},{"date":"2026-09-25","recovery":60,"sleep":7.2,"hrv":64,"rhr":55,"need":8.0,"deep":1.63,"rem":1.82,"light":3.75,"awake":0.48,"strain":12.7},{"date":"2026-09-26","recovery":53,"sleep":7.6,"hrv":61,"rhr":56,"need":8.4,"deep":1.33,"rem":1.74,"light":4.53,"awake":0.2,"strain":6.6},{"date":"2026-09-27","recovery":61,"sleep":7.0,"hrv":64,"rhr":53,"need":8.2,"deep":1.42,"rem":1.51,"light":4.07,"awake":0.57,"strain":13.0},{"date":"2026-09-28","recovery":66,"sleep":7.8,"hrv":64,"rhr":54,"need":7.6,"deep":1.42,"rem":1.71,"light":4.67,"awake":0.39,"strain":14.0},{"date":"2026-09-29","recovery":70,"sleep":7.5,"hrv":65,"rhr":53,"need":7.9,"deep":1.38,"rem":1.65,"light":4.47,"awake":0.44,"strain":10.7},{"date":"2026-09-30","recovery":56,"sleep":7.7,"hrv":63,"rhr":56,"need":8.3,"deep":1.41,"rem":1.96,"light":4.33,"awake":0.54,"strain":12.9},{"date":"2026-10-01","recovery":50,"sleep":7.6,"hrv":62,"rhr":56,"need":7.9,"deep":1.35,"rem":1.95,"light":4.3,"awake":0.36,"strain":10.6},{"date":"2026-10-02","recovery":28,"sleep":5.4,"hrv":48,"rhr":58,"need":8.1,"deep":0.95,"rem":1.22,"light":3.23,"awake":0.36,"strain":9.4},{"date":"2026-10-03","recovery":50,"sleep":6.6,"hrv":56,"rhr":56,"need":7.7,"deep":1.16,"rem":1.48,"light":3.96,"awake":0.07,"strain":8.7},{"date":"2026-10-04","recovery":51,"sleep":7.7,"hrv":62,"rhr":55,"need":8.1,"deep":1.5,"rem":1.67,"light":4.53,"awake":0.6,"strain":8.0},{"date":"2026-10-05","recovery":55,"sleep":7.8,"hrv":65,"rhr":55,"need":8.2,"deep":1.35,"rem":2.03,"light":4.42,"awake":0.3,"strain":12.7},{"date":"2026-10-06","recovery":56,"sleep":7.1,"hrv":69,"rhr":55,"need":8.1,"deep":1.41,"rem":1.51,"light":4.18,"awake":0.38,"strain":9.2},{"date":"2026-10-07","recovery":63,"sleep":7.3,"hrv":68,"rhr":55,"need":8.2,"deep":1.58,"rem":1.66,"light":4.06,"awake":0.44,"strain":9.4},{"date":"2026-10-08","recovery":70,"sleep":7.6,"hrv":77,"rhr":53,"need":7.6,"deep":1.36,"rem":1.66,"light":4.58,"awake":0.37,"strain":13.7},{"date":"2026-10-09","recovery":70,"sleep":7.7,"hrv":64,"rhr":53,"need":8.0,"deep":1.58,"rem":1.77,"light":4.35,"awake":0.4,"strain":12.8},{"date":"2026-10-10","recovery":56,"sleep":6.8,"hrv":67,"rhr":57,"need":8.1,"deep":1.4,"rem":1.64,"light":3.76,"awake":0.5,"strain":7.9},{"date":"2026-10-11","recovery":62,"sleep":6.9,"hrv":69,"rhr":56,"need":8.0,"deep":1.43,"rem":1.55,"light":3.92,"awake":0.65,"strain":10.7},{"date":"2026-10-12","recovery":82,"sleep":7.0,"hrv":64,"rhr":52,"need":8.1,"deep":1.29,"rem":1.57,"light":4.14,"awake":0.68,"strain":11.4},{"date":"2026-10-13","recovery":64,"sleep":7.1,"hrv":64,"rhr":55,"need":8.0,"deep":1.4,"rem":1.85,"light":3.85,"awake":0.39,"strain":14.0},{"date":"2026-10-14","recovery":48,"sleep":6.2,"hrv":62,"rhr":56,"need":7.9,"deep":1.38,"rem":1.57,"light":3.25,"awake":0.8,"strain":9.0},{"date":"2026-10-15","recovery":72,"sleep":7.6,"hrv":68,"rhr":52,"need":8.1,"deep":1.74,"rem":1.82,"light":4.04,"awake":0.25,"strain":4.1}];  // 30 days of WHOOP-style numbers, oldest first; the last one is "today"
+const TODAY = DAYS[DAYS.length - 1];
+const BEFORE = DAYS.slice(0, -1);
+const avg = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0) / rows.length;
+
+const CAL = [  // The week on Google Calendar: [start, end, title, calendar]
+  { date: "2026-10-12", plan: ["directions_run", "Run · 2 mi", true], events: [
+    ["07:00", "07:30", "Easy run, 2 mi", "coach"], ["09:00", "09:50", "BIO 150 Lecture", "classes"],
+    ["10:00", "10:50", "CHM 111", "classes"], ["13:00", "13:50", "WRI 111", "classes"], ["14:00", "16:50", "CHM 111 Lab", "classes"]] },
+  { date: "2026-10-13", plan: ["sports_tennis", "Tennis, no run", true], events: [
+    ["09:30", "10:45", "PSY 151", "classes"], ["11:00", "12:15", "MTH 111", "classes"],
+    ["16:00", "17:30", "Club tennis", "personal"], ["19:00", "20:00", "Dinner at the Pit", "personal"]] },
+  { date: "2026-10-14", plan: ["bedtime", "Rest · run moved", true], events: [
+    ["09:00", "09:50", "BIO 150 Lecture", "classes"], ["10:00", "10:50", "CHM 111", "classes"],
+    ["13:00", "13:50", "WRI 111", "classes"], ["14:00", "16:50", "BIO 150 Lab", "classes"], ["19:00", "20:30", "CHM study group", "personal"]] },
+  { date: "2026-10-15", today: true, plan: ["directions_run", "Run · 2 mi", false], events: [
+    ["07:00", "07:40", "Easy run, 2 mi", "coach"], ["09:30", "10:45", "PSY 151", "classes"], ["11:00", "12:15", "MTH 111", "classes"],
+    ["12:30", "13:15", "Lunch with roommates", "personal"], ["16:00", "17:30", "Club tennis", "personal"], ["19:30", "21:00", "CHM midterm review", "personal"]] },
+  { date: "2026-10-16", plan: ["bedtime", "Rest · midterm", false], events: [
+    ["09:00", "09:50", "BIO 150 Lecture", "classes"], ["10:00", "10:50", "CHM 111 Midterm", "classes", "exam"],
+    ["13:00", "13:50", "WRI 111", "classes"], ["18:30", "20:00", "Movie night", "personal"]] },
+  { date: "2026-10-17", plan: ["directions_run", "Long run · 3.5 mi", false], events: [
+    ["09:00", "09:55", "Long run/walk, 3.5 mi", "coach"], ["12:00", "15:30", "Deacs football game", "personal"]] },
+  { date: "2026-10-18", plan: ["pedal_bike", "Easy bike · 30 min", false], events: [
+    ["10:00", "10:30", "Easy bike, 30 min", "coach"], ["14:00", "16:00", "Study: BIO 150", "personal"], ["18:00", "18:30", "Call home", "personal"]] },
+];
+const CALENDAR_NAMES = { classes: "WFU Classes", personal: "Tennis & personal", coach: "Training Coach" };
+
+const STEPS = [
+  ["sync", null, "Downloaded the latest WHOOP data (14 days)."],
+  ["psychology", null, "Recovery is green and HRV is above normal. Tennis at 4 PM adds load, so a short, easy run in the morning fits best.", "thought"],
+  ["monitor_heart", "get_whoop_recovery", "latest recovery 72%, HRV 68 ms (normal 64)"],
+  ["bedtime", "get_whoop_sleep", "last night 7.6 h asleep, 8.1 h needed"],
+  ["local_fire_department", "get_whoop_strain", "yesterday's strain 7.8"],
+  ["directions_run", "get_whoop_workouts", "5 workouts, 2.0 running miles this week (7.0 last week)"],
+  ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
+  ["event", "get_calendar_events", "6 events today; free 6:00–9:15 AM and 1:15–3:45 PM; CHM 111 midterm Friday"],
+  ["calendar_month", "get_training_plan", "7 days planned"],
+  ["history", "get_training_history", "Wednesday's run was moved (recovery 48%)"],
+  ["calendar_add_on", "create_calendar_event", "suggested 7:00 AM for 40 min, then Clive approved it"],
+  ["save", "save_daily_log", "saved today's decision"],
+  ["check_circle", null, "Decision: easy run, 2 miles at 7:00 AM.", "done"],
+];
+
+// ---------- Small helpers ----------
+const SVG = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, text) {
+  const node = document.createElementNS(SVG, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function tooltip(node, text) { node.appendChild(svg("title", {}, text)); return node; }
+function html(tag, className, inner) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (inner !== undefined) node.innerHTML = inner;
+  return node;
+}
+const day = iso => new Date(iso + "T12:00:00");
+const short = iso => day(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const clock = hhmm => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+const hours = hhmm => { const [h, m] = hhmm.split(":").map(Number); return h + m / 60; };
+const zoneColor = r => (r >= 67 ? "var(--good)" : r >= 34 ? "var(--warn)" : "var(--bad)");
+const zoneName = r => (r >= 67 ? "Green" : r >= 34 ? "Yellow" : "Red");
+// A bar with a 4px rounded top and a square bottom.
+function bar(x, y, w, h, r = 3) {
+  r = Math.min(r, w / 2, h);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+
+// ---------- Recovery ring and number tiles ----------
+(function today() {
+  const r = TODAY.recovery, size = 120, radius = 50, around = 2 * Math.PI * radius;
+  const ring = svg("svg", { viewBox: `0 0 ${size} ${size}`, role: "img", "aria-label": `Recovery ${r}%` });
+  ring.append(
+    svg("circle", { cx: 60, cy: 60, r: radius, fill: "none", stroke: "var(--grid)", "stroke-width": 11 }),
+    svg("circle", { cx: 60, cy: 60, r: radius, fill: "none", stroke: zoneColor(r), "stroke-width": 11, "stroke-linecap": "round",
+      "stroke-dasharray": `${around * r / 100} ${around}`, transform: "rotate(-90 60 60)" }),
+    svg("text", { x: 60, y: 63, "text-anchor": "middle", class: "num" }, `${r}%`),
+    svg("text", { x: 60, y: 81, "text-anchor": "middle", class: "cap" }, "RECOVERY"),
+  );
+  const box = document.getElementById("ring");
+  box.append(ring, html("div", "zone", `<i class="dot" style="background:${zoneColor(r)}"></i>${zoneName(r)} · ready to train`),
+    html("div", "zone-note", "Up from 48% yesterday"));
+
+  const last14 = DAYS.slice(-14);
+  const tiles = [
+    ["monitor_heart", "HRV", TODAY.hrv, "ms", TODAY.hrv - avg(BEFORE, "hrv"), "vs normal", true, last14.map(d => d.hrv)],
+    ["favorite", "Resting HR", TODAY.rhr, "bpm", TODAY.rhr - avg(BEFORE, "rhr"), "vs normal", false, last14.map(d => d.rhr)],
+    ["bedtime", "Sleep", TODAY.sleep, "h", TODAY.sleep - TODAY.need, "vs needed", true, last14.map(d => d.sleep)],
+    ["local_fire_department", "Strain", TODAY.strain, "", null, "so far today", null, last14.map(d => d.strain)],
+  ];
+  const holder = document.getElementById("tiles");
+  for (const [icon, label, value, unit, change, vs, higherIsBetter, trend] of tiles) {
+    let chip = `<span class="delta flat">${vs}</span>`;
+    if (change !== null) {
+      const good = higherIsBetter ? change > 0 : change < 0;
+      const digits = unit === "h" ? 1 : 0;
+      chip = `<span class="delta ${good ? "good" : "bad"}"><span class="icon">${change > 0 ? "arrow_upward" : "arrow_downward"}</span>${Math.abs(change).toFixed(digits)} ${unit}</span><span class="vs">${vs}</span>`;
+    }
+    const tile = html("div", "tile",
+      `<div class="label"><span class="icon">${icon}</span>${label}</div>` +
+      `<div class="value">${value}<small>${unit}</small></div>${chip}`);
+    // A small trend line of the last 14 days.
+    const w = 140, h = 34, lo = Math.min(...trend), hi = Math.max(...trend);
+    const spark = svg("svg", { class: "spark", viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", "aria-hidden": "true" });
+    const pts = trend.map((v, i) => [i * (w - 6) / (trend.length - 1) + 3, h - 4 - (v - lo) / ((hi - lo) || 1) * (h - 8)]);
+    spark.append(svg("polyline", { points: pts.map(p => p.join(",")).join(" "), fill: "none", stroke: "var(--muted)",
+      "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" }));
+    tile.append(spark);
+    holder.append(tile);
+  }
+})();
+
+// ---------- How the coach decided ----------
+(function steps() {
+  const box = document.getElementById("steps");
+  for (const [icon, tool, text, kind] of STEPS) {
+    const body = tool ? `<code>${tool}</code> <span class="out">→ ${text}</span>` : text;
+    box.append(html("div", `step ${kind || ""}`, `<span class="icon">${icon}</span><div>${body}</div>`));
+  }
+})();
+
+// ---------- Today's agenda ----------
+(function agenda() {
+  const today = CAL.find(d => d.today);
+  const list = document.getElementById("agenda");
+  const colors = { classes: "var(--s1)", personal: "var(--s3)", coach: "var(--s2)" };
+  for (const [start, end, title, cal, tag] of today.events) {
+    const name = cal === "coach" ? `<span class="icon fill">directions_run</span>${title}` : title;
+    const li = html("li", cal, `<div class="t">${clock(start)}</div>` +
+      `<div class="e" style="border-color:${colors[cal]}"><b>${name}</b><span>${clock(start)}–${clock(end)} · ${CALENDAR_NAMES[cal]}</span></div>`);
+    list.append(li);
+  }
+})();
+
+// ---------- Week calendar ----------
+(function calendar() {
+  const first = 7, last = 22, px = 38;  // 7 AM to 10 PM, 38px per hour
+  const cal = document.getElementById("cal");
+  const head = html("div", "cal-head"), body = html("div", "cal-body");
+  head.append(html("div", "", ""));
+  const times = html("div", "times"); times.style.height = `${(last - first) * px}px`;
+  for (let h = first + 1; h < last; h++) {
+    const label = html("div", "", `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`);
+    label.style.top = `${(h - first) * px}px`;
+    times.append(label);
+  }
+  body.append(times);
+  for (const d of CAL) {
+    const date = day(d.date);
+    const [icon, text, done] = d.plan;
+    head.append(html("div", d.today ? "is-today" : "",
+      `<div class="dow">${d.today ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" })}</div>` +
+      `<div class="num">${date.getDate()}</div>` +
+      `<div class="plan-chip ${icon === "directions_run" || icon === "pedal_bike" ? "run" : ""}"><span class="icon">${icon}</span>${text}` +
+      `${done ? ' <span class="icon ok" title="Done">check_circle</span>' : ""}</div>`));
+    const col = html("div", `day-col${d.today ? " is-today" : ""}`); col.style.height = `${(last - first) * px}px`;
+    for (let h = first + 1; h < last; h++) {
+      const line = html("div", "hour-line"); line.style.top = `${(h - first) * px}px`; col.append(line);
+    }
+    for (const [start, end, title, kind, tag] of d.events) {
+      const ev = html("div", `ev ${kind}${tag ? " " + tag : ""}`,
+        `<b>${title}</b><span>${clock(start)}</span>`);
+      ev.style.top = `${(hours(start) - first) * px + 1}px`;
+      ev.style.height = `${Math.max((hours(end) - hours(start)) * px - 3, 20)}px`;
+      ev.title = `${title} · ${clock(start)}–${clock(end)} · ${CALENDAR_NAMES[kind]}`;
+      col.append(ev);
+    }
+    if (d.today) {  // "now" line at 6:45 AM, just before the planned run
+      const now = html("div", "now-line"); now.style.top = `${(6.9 - first) * px}px`;
+      if (6.9 >= first) col.append(now);
+    }
+    body.append(col);
+  }
+  cal.append(head, body);
+})();
+
+// ---------- Charts ----------
+const W = 520, H = 210, M = { l: 34, r: 12, t: 8, b: 24 };
+const plotW = W - M.l - M.r, plotH = H - M.t - M.b;
+function frame(el, lo, hi, ticks, unit = "") {
+  const y = v => M.t + plotH - (v - lo) / (hi - lo) * plotH;
+  for (const t of ticks) {
+    el.append(svg("line", { x1: M.l, x2: W - M.r, y1: y(t), y2: y(t), class: t === lo ? "base" : "grid" }));
+    el.append(svg("text", { x: M.l - 8, y: y(t) + 4, "text-anchor": "end" }, `${t}${unit}`));
+  }
+  return y;
+}
+function dateLabels(el, x, every = 7) {
+  DAYS.forEach((d, i) => {
+    if ((DAYS.length - 1 - i) % every === 0) el.append(svg("text", { x: x(i), y: H - 6, "text-anchor": "middle" }, short(d.date)));
+  });
+}
+const band = plotW / DAYS.length;
+const xMid = i => M.l + band * i + band / 2;
+const barW = Math.min(12, band * 0.62);
+
+(function recoveryChart() {
+  const el = document.getElementById("recovery-chart");
+  const y = frame(el, 0, 100, [0, 25, 50, 75, 100]);
+  DAYS.forEach((d, i) => {
+    const top = y(d.recovery);
+    el.append(tooltip(svg("path", { d: bar(xMid(i) - barW / 2, top, barW, y(0) - top), fill: zoneColor(d.recovery) }),
+      `${short(d.date)}: ${d.recovery}% (${zoneName(d.recovery)})`));
+  });
+  dateLabels(el, xMid);
+})();
+
+(function hrvChart() {
+  const el = document.getElementById("hrv-chart");
+  // Normal range: the average of the previous 10 days, plus or minus one standard deviation.
+  const range = DAYS.map((d, i) => {
+    const past = DAYS.slice(Math.max(0, i - 10), i);
+    if (past.length < 5) return null;
+    const mean = avg(past, "hrv");
+    const sd = Math.sqrt(past.reduce((s, p) => s + (p.hrv - mean) ** 2, 0) / past.length);
+    return [mean - sd, mean + sd];
+  });
+  const y = frame(el, 40, 80, [40, 50, 60, 70, 80]);
+  const known = range.map((r, i) => [i, r]).filter(([, r]) => r);
+  const area = known.map(([i, r]) => `${xMid(i)},${y(r[1])}`).join(" ") + " " +
+    known.slice().reverse().map(([i, r]) => `${xMid(i)},${y(r[0])}`).join(" ");
+  el.append(svg("polygon", { points: area, fill: "var(--s1)", opacity: 0.12 }));
+  el.append(svg("polyline", { points: DAYS.map((d, i) => `${xMid(i)},${y(d.hrv)}`).join(" "), fill: "none",
+    stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  DAYS.forEach((d, i) => {  // invisible hover targets with the exact number
+    const g = svg("g", { class: "pt" });
+    g.append(svg("circle", { cx: xMid(i), cy: y(d.hrv), r: 4.5, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2, class: "ring-dot" }));
+    g.append(tooltip(svg("rect", { x: xMid(i) - band / 2, y: M.t, width: band, height: plotH, class: "hit" }),
+      `${short(d.date)}: HRV ${d.hrv} ms` + (range[i] ? ` (normal ${Math.round(range[i][0])}–${Math.round(range[i][1])})` : "")));
+    el.append(g);
+  });
+  const lastX = xMid(DAYS.length - 1), lastY = y(TODAY.hrv);
+  el.append(svg("circle", { cx: lastX, cy: lastY, r: 4.5, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2 }));
+  el.append(svg("text", { x: lastX, y: lastY - 11, "text-anchor": "middle", class: "end" }, `${TODAY.hrv}`));
+  dateLabels(el, xMid);
+})();
+
+(function sleepChart() {
+  const el = document.getElementById("sleep-chart");
+  const y = frame(el, 0, 10, [0, 2, 4, 6, 8, 10], "h");
+  const stages = [["deep", "Deep", "var(--s1)"], ["rem", "REM", "var(--s2)"], ["light", "Light", "var(--s3)"], ["awake", "Awake", "var(--s4)"]];
+  DAYS.forEach((d, i) => {
+    let base = 0;
+    stages.forEach(([key, name, color], s) => {
+      const top = base + d[key];
+      const rect = s === stages.length - 1
+        ? svg("path", { d: bar(xMid(i) - barW / 2, y(top), barW, y(base) - y(top)), fill: color })
+        : svg("rect", { x: xMid(i) - barW / 2, y: y(top), width: barW, height: y(base) - y(top), fill: color });
+      rect.setAttribute("stroke", "var(--card)"); rect.setAttribute("stroke-width", 1.5);  // thin gap between stages
+      el.append(tooltip(rect, `${short(d.date)}: ${name} ${d[key].toFixed(1)} h`));
+      base = top;
+    });
+    el.append(tooltip(svg("line", { x1: xMid(i) - barW / 2 - 3, x2: xMid(i) + barW / 2 + 3, y1: y(d.need), y2: y(d.need),
+      stroke: "var(--muted)", "stroke-width": 2, "stroke-linecap": "round" }), `${short(d.date)}: needed ${d.need} h`));
+  });
+  dateLabels(el, xMid);
+})();
+
+(function milesChart() {
+  const el = document.getElementById("miles-chart");
+  const weeks = [["Sep 7", 4.0], ["Sep 14", 4.5], ["Sep 21", 5.0], ["Sep 28", 6.0], ["Oct 5", 7.0], ["Oct 12", 4.0]];
+  const y = frame(el, 0, 8, [0, 2, 4, 6, 8]);
+  const slot = plotW / weeks.length, w = 24;
+  weeks.forEach(([label, miles], i) => {
+    const x = M.l + slot * i + slot / 2, top = y(miles), current = i === weeks.length - 1;
+    el.append(tooltip(svg("path", { d: bar(x - w / 2, top, w, y(0) - top, 4), fill: "var(--s1)", opacity: current ? 1 : 0.85 }),
+      `Week of ${label}: ${miles} miles${current ? " so far (7.5 planned)" : ""}`));
+    if (current) {
+      el.append(svg("rect", { x: x - w / 2, y: y(7.5), width: w, height: top - y(7.5), rx: 4, fill: "none",
+        stroke: "var(--s1)", "stroke-width": 1.5, "stroke-dasharray": "3 3" }));
+      el.append(svg("text", { x, y: y(7.5) - 8, "text-anchor": "middle", class: "end" }, "4.0 so far"));
+    }
+    el.append(svg("text", { x, y: H - 6, "text-anchor": "middle" }, label));
+  });
+})();
+
+// ---------- The same numbers as a table ----------
+(function table() {
+  const rows = DAYS.slice().reverse().map(d =>
+    `<tr><td>${day(d.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</td>` +
+    `<td>${d.recovery}%</td><td>${d.hrv}</td><td>${d.rhr}</td><td>${d.sleep}</td><td>${d.need}</td><td>${d.strain}</td></tr>`).join("");
+  document.getElementById("table").innerHTML =
+    "<thead><tr><th>Date</th><th>Recovery</th><th>HRV (ms)</th><th>Resting HR</th><th>Sleep (h)</th><th>Needed (h)</th><th>Strain</th></tr></thead>" +
+    `<tbody>${rows}</tbody>`;
+})();
+</script>
+</body>
+</html>

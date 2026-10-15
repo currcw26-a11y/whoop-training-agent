@@ -6,13 +6,12 @@ agent checks your recovery, sleep, the weather, your class schedule, and your
 training history, then decides today's workout, explains why, and suggests a
 time on your calendar.
 
-Built by [currcw26-a11y](https://github.com/currcw26-a11y) for an AI seminar class at Wake Forest.
+Built by Clive Curry for an AI seminar class at Wake Forest.
+
+**[See the live demo](https://currcw26-a11y.github.io/whoop-training-agent/)**: a mock-up of the
+dashboard with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
 
 > Training suggestions only, **not medical advice**.
->
-> The screenshots below use **made-up data**, not anyone's real health information.
-
-![Dashboard: recovery ring, today's numbers, and the coach's decision](docs/screenshots/dashboard.jpg)
 
 ## Progress
 
@@ -47,26 +46,11 @@ the code calls the Claude API directly (no big framework), gives Claude a set of
 | `create_calendar_event` | *Suggests* a workout time. You approve it on the website |
 | `save_daily_log` | Saves today's decision and the reason |
 
-The page shows each step the agent took, including a short summary of its reasoning:
-
-![The steps the agent took: every tool it used and what came back](docs/screenshots/agent-steps.jpg)
+The page shows each step the agent took, including a short summary of its reasoning
+(open **How the coach decided** in the demo).
 
 Each run costs about **half a cent** on `claude-haiku-5-5`. The model is one
 setting in `config.py`.
-
-## More screenshots
-
-**The week's plan.** Icons show the workout type, plus the time and whether it's on your calendar:
-
-![This week's plan](docs/screenshots/week-plan.jpg)
-
-**Charts.** Recovery zones, HRV and resting heart rate against your normal range, sleep stages, and training load:
-
-![Charts](docs/screenshots/charts.jpg)
-
-**Insights.** Patterns in your own data, like how sleep and bedtime affect your next-morning recovery:
-
-![Insights](docs/screenshots/insights.jpg)
 
 ## How it's built
 
@@ -102,6 +86,7 @@ The database blocks public access, and only the website's server can read it.
 | `privacy.py` | Privacy policy and "Delete my data" |
 | `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font |
 | `style.css` | Extra styling: cards, labels, the recovery ring, the week plan |
+| `docs/index.html` | The demo website (one page, sample data), published with GitHub Pages |
 
 ## Run it on your computer (Windows)
 
