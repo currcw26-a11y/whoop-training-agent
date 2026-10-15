@@ -8,8 +8,8 @@ time on your calendar.
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
-**[See the live demo](https://currcw26-a11y.github.io/whoop-training-agent/)**: a mock-up of the
-dashboard with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
+**Live demo:** coming soon. It's a mock-up of the dashboard with sample data
+(`docs/index.html`) that doesn't need any sign-in, WHOOP, or Google Calendar.
 
 > Training suggestions only, **not medical advice**.
 
@@ -85,7 +85,7 @@ The database blocks public access, and only the website's server can read it.
 | `privacy.py` | Privacy policy and "Delete my data" |
 | `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font |
 | `style.css` | Extra styling: cards, labels, the recovery ring, the week plan |
-| `docs/index.html` | The demo website (one page, sample data), published with GitHub Pages |
+| `docs/index.html` | The demo website (one page, sample data) |
 
 ## Run it on your computer (Windows)
 
