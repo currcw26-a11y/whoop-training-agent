@@ -81,7 +81,15 @@ def _access_token(email):
         return saved["access_token"]
     # Google usually keeps the same refresh token (so it doesn't send a new one);
     # save_tokens() keeps the old one when that happens.
-    tokens = _ask_for_tokens({"grant_type": "refresh_token", "refresh_token": saved["refresh_token"]})
+    try:
+        tokens = _ask_for_tokens({"grant_type": "refresh_token", "refresh_token": saved["refresh_token"]})
+    except requests.HTTPError as error:
+        if error.response.status_code in (400, 401):
+            # Google says the refresh token no longer works. That happens every 7 days while the
+            # Google app is in "Testing" mode, or if the person removed access. Forget it, so the
+            # site shows the Connect button again.
+            db.delete_tokens(email, "google")
+        raise
     db.save_tokens(email, "google", tokens)
     return tokens["access_token"]
 
