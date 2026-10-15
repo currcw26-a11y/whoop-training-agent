@@ -6,6 +6,13 @@
 # Hide Streamlit's "Deploy" button and developer menu.
 toolbarMode = "minimal"
 
+[server]
+# Start right away without asking for an email address in the terminal.
+headless = true
+
+[browser]
+gatherUsageStats = false
+
 [theme]
 # Inter, a clean modern font, loaded from Google Fonts (mentioned on the Privacy page).
 font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
