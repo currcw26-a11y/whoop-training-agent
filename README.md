@@ -34,7 +34,7 @@ the code calls the Claude API directly (no big framework), gives Claude a set of
 2. Claude gets instructions, a description of you (goal, run times), and **11 tools**.
 3. Claude asks to use tools. The code runs them and sends back the results.
 4. That repeats until Claude decides, with at most 10 rounds so it can't run forever.
-5. Every step and its cost are saved and shown on the page.
+5. Every step is saved and shown on the page.
 
 | Tool | What it gives Claude |
 |---|---|
@@ -49,8 +49,7 @@ the code calls the Claude API directly (no big framework), gives Claude a set of
 The page shows each step the agent took, including a short summary of its reasoning
 (open **How the coach decided** in the demo).
 
-Each run costs about **half a cent** on `claude-haiku-5-5`. The model is one
-setting in `config.py`.
+The agent runs on `claude-haiku-5-5`, and the model is one setting in `config.py`.
 
 ## How it's built
 

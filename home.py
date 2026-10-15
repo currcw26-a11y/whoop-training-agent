@@ -272,7 +272,7 @@ with st.container(key="card-coach"):
                 result = agent.plan_my_day(email, ui.show_step)
                 runs_left -= 1
                 status.update(
-                    label=f"Done · used {ui.tools_used(result['steps'])} tools · cost ${result['cost']:.4f}",
+                    label=f"Done · used {ui.tools_used(result['steps'])} tools",
                     state="complete", expanded=False,
                 )
             except anthropic.AuthenticationError:
@@ -308,7 +308,7 @@ with st.container(key="card-coach"):
                 ui.label("Today's workout", "auto_awesome", "workout")
             with meta_spot.container(key="meta-run"):
                 st.caption(f"Planned {ui.time_ago(latest_run['created_at'])} · "
-                           f"{ui.tools_used(latest_run['steps'])} tools · ${float(latest_run['cost_usd']):.4f}")
+                           f"{ui.tools_used(latest_run['steps'])} tools · {latest_run['model']}")
             # The headline is the short workout the coach saved; the explanation is its full reply.
             today_row = plan.get(today.isoformat(), {})
             saved_workout = today_row.get("adjusted_workout") or today_row.get("planned_workout")
