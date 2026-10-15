@@ -8,8 +8,8 @@ time on your calendar.
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
-**Live demo:** coming soon. It's a mock-up of the dashboard with sample data
-(`docs/index.html`) that doesn't need any sign-in, WHOOP, or Google Calendar.
+**[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: a mock-up of the dashboard
+with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
 
 > Training suggestions only, **not medical advice**.
 
