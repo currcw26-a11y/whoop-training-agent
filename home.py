@@ -315,7 +315,9 @@ def calendar_blocks(first_day, plan_rows):
         except requests.HTTPError:
             error = "Couldn't read your Google Calendar. If this keeps happening, connect it again on your Coaching profile."
     found = [{
-        "start": e["start"], "end": e["end"], "title": e["title"], "calendar": e["calendar"], "all_day": e["all_day"],
+        "start": e["start"], "end": e["end"], "title": e["title"], "all_day": e["all_day"],
+        # Google names your main calendar after your email address; "Your calendar" reads better.
+        "calendar": "Your calendar" if "@" in e["calendar"] else e["calendar"],
         # Colors stay the same every week: the coach's workouts orange, your main calendar blue,
         # your second calendar green, any others gray.
         "kind": "coach" if e["from_coach"] else ("cal1", "cal2")[e.get("calendar_rank", 0)]

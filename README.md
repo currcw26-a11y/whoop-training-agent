@@ -12,8 +12,8 @@ rules from sports and sleep research. **[RESEARCH.md](RESEARCH.md)** explains ho
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
-**[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: a mock-up of the dashboard
-with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
+**[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: a mock-up of the whole site (Home,
+Ask the coach, and Coaching profile) with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
 
 > Training suggestions only, **not medical advice**.
 
@@ -101,7 +101,7 @@ The database blocks public access, and only the website's server can read it.
 | `.streamlit/config.toml` | The look: colors for light and dark mode, the Inter font |
 | `style.css` | The look of the site (matches the demo): cards, tiles, the agenda, the week calendar |
 | `assets/` | The logo shown in the top bar (light and dark versions) |
-| `docs/index.html` | The demo website (one page, sample data) |
+| `docs/index.html` | The demo website (sample data; Home, Ask the coach, and Coaching profile) |
 
 ## Run it on your computer (Windows)
 

@@ -143,6 +143,8 @@ h2, h3, h4 { letter-spacing: -0.02em; }
 
 /* ---------- Week calendar ---------- */
 .st-key-card-week { padding: 0 !important; overflow: hidden; }
+/* Streamlit pulls text blocks up 16px at the bottom; this card has no padding to hide that, so undo it. */
+.st-key-card-week [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
 .wk-scroll { overflow-x: auto; }
 .wk { min-width: 820px; }
 .wk-head, .wk-body { display: grid; grid-template-columns: 54px repeat(7, minmax(0, 1fr)); }
@@ -191,7 +193,7 @@ h2, h3, h4 { letter-spacing: -0.02em; }
 .wk-ev.suggested { border-style: dashed; border-width: 1px 1px 1px 3px; }
 .wk-now { position: absolute; left: 0; right: 0; border-top: 2px solid var(--bad); }
 .wk-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
-.wk-foot { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); }
+.wk-foot { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.85rem 1.1rem 1rem; border-top: 1px solid var(--border); }
 .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.78rem; color: var(--text-2); }
 .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
