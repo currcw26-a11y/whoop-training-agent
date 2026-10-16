@@ -136,7 +136,7 @@ def trend_chart(days, column, label, unit, start, end):
     room = max((values.max() - values.min()) * 0.12, 2)
     y_scale = alt.Scale(domain=[float(values.min() - room), float(values.max() + room)], nice=True)
 
-    band = base.mark_area(opacity=0.14, color=_blue()).encode(
+    band = base.mark_area(opacity=0.22 if _dark() else 0.13, color=_blue()).encode(
         y=alt.Y(f"{column}_low:Q", title=None, scale=y_scale), y2=f"{column}_high:Q",
     )
     line = base.mark_line(strokeWidth=2, strokeCap="round", strokeJoin="round", color=_blue(),

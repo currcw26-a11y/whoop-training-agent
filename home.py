@@ -1,6 +1,7 @@
 # home.py: the main page. Same layout as the demo (docs/index.html), with live data.
 #   Signed out -> what the site does, and "Sign in with Google".
-#   Signed in  -> 1. today's numbers  2. the coach + today's calendar  3. the week  4. trends  5. insights.
+#   Signed in  -> 1. today's numbers  2. the coach + today's calendar  3. the sleep plan  4. the week
+#                 5. trends  6. insights.
 # WHOOP numbers are read from the database (downloaded into it first). Calendar events come
 # straight from Google Calendar, remembered for 5 minutes.
 # The look comes from style.css and .streamlit/config.toml.
@@ -20,6 +21,8 @@ import charts
 import config
 import db
 import google_calendar
+import personal
+import sleep_plan
 import ui
 import weather
 import whoop
@@ -48,6 +51,14 @@ def week_events(email, monday, time_zone_name):
     return google_calendar.list_events(email, start, start + timedelta(days=7), zone)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def sleep_events(email, first_morning, time_zone_name):
+    """Events for the 7 mornings after tonight, for the sleep plan's wake-up times."""
+    zone = ZoneInfo(time_zone_name)
+    start = datetime.combine(date.fromisoformat(first_morning), time(0), zone)
+    return google_calendar.list_events(email, start, start + timedelta(days=7), zone)
+
+
 def calendar_box(email, plan, connected, time_zone):
     """Ask to add the coach's suggested time to Google Calendar. Nothing goes on the
     calendar without this click. It shows the next suggestion this week (it may be on another day)."""
@@ -72,6 +83,7 @@ def calendar_box(email, plan, connected, time_zone):
                     )
                     db.set_event_status(email, day, "added", event_id)
                     week_events.clear()  # so the new event shows up right away
+                    sleep_events.clear()
                     st.toast("Added to your Google Calendar.", icon=":material/event_available:")
                     st.rerun()
                 except requests.HTTPError as error:
@@ -324,54 +336,32 @@ blocks, calendar_error = calendar_blocks(monday, plan.values())  # this week (fo
 
 # ---------- 2. The coach + today's calendar ----------
 st.write("")
-runs_left = config.RUNS_PER_PERSON_PER_DAY - db.count_agent_runs(email)
-site_full = db.count_agent_runs() >= config.RUNS_PER_SITE_PER_DAY
 coach_side, agenda_side = st.columns([1.55, 1], gap="medium")
 
-with coach_side.container(key="card-coach"):
+with coach_side.container(key="card-coach", height="stretch"):
     decision_spot = st.container()  # filled in below, after the button, so a new plan shows right away
     approval_spot = st.container()
-    button_spot, note_spot = st.columns([1, 2.2], vertical_alignment="center")
-    pressed = button_spot.button(
-        "Plan my day", icon=":material/auto_awesome:", type="primary", width="stretch",
-        disabled=not ready or runs_left <= 0 or site_full,
-    )
+    with st.container(horizontal=True, vertical_alignment="center", key="coach-buttons"):
+        pressed = st.button("Plan my day", icon=":material/auto_awesome:", type="primary", disabled=not ready)
+        st.page_link("chat.py", label="Ask the coach", icon=":material/forum:")
 
     # The agent ONLY runs when the button is pressed. Streamlit re-runs this whole
     # file on every click, so running it anywhere else would waste Claude credits.
-    if pressed:
+    if pressed and not agent.can_run(email):
+        st.info(agent.LIMIT_MESSAGE, icon=":material/hourglass_top:")
+    elif pressed:
         with st.status("The coach is working...", expanded=True) as status:
             try:
                 result = agent.plan_my_day(email, ui.show_step)
-                runs_left -= 1
                 week_events.clear()
                 status.update(label=f"Done · used {ui.tools_used(result['steps'])} tools", state="complete",
                               expanded=False)
                 plan = {row["date"]: row for row in
                         db.get_plan(email, monday.isoformat(), (today + timedelta(days=6)).isoformat())}
-            except anthropic.AuthenticationError:
-                status.update(label="Claude didn't accept the API key", state="error")
-                st.error("The `anthropic_api_key` in secrets.toml isn't valid.")
-            except anthropic.BadRequestError as error:
-                status.update(label="Claude couldn't run", state="error")
-                if "credit" in error.message.lower():
-                    st.error("The Claude account is out of credits. Add more at console.anthropic.com.")
-                else:
-                    st.error(f"Claude said the request was invalid: {error.message}")
-            except anthropic.RateLimitError:
-                status.update(label="Claude is busy", state="error")
-                st.error("Too many requests to Claude right now. Wait a minute and try again.")
-            except anthropic.APIConnectionError:
-                status.update(label="Couldn't reach Claude", state="error")
-                st.error("Couldn't connect to Claude. Check the internet connection and try again.")
-            except anthropic.APIStatusError as error:
-                status.update(label="Claude had a problem", state="error")
-                st.error(f"Claude returned an error ({error.status_code}). Try again in a minute.")
-
-    if site_full:
-        note_spot.caption("The coach has reached today's limit for the whole site. Try again tomorrow.")
-    else:
-        note_spot.caption(f"{max(runs_left, 0)} of {config.RUNS_PER_PERSON_PER_DAY} runs left today · {config.MODEL}")
+            except anthropic.APIError as error:
+                problem, explanation = ui.claude_problem(error)
+                status.update(label=problem, state="error")
+                st.error(explanation)
 
     latest_run = db.latest_agent_run(email)
     today_row = plan.get(today.isoformat(), {})
@@ -415,7 +405,7 @@ with coach_side.container(key="card-coach"):
             raw = st.toggle("Show the raw data Claude saw")
             ui.show_steps(latest_run["steps"], raw)
 
-with agenda_side.container(key="card-agenda"):
+with agenda_side.container(key="card-agenda", height="stretch"):
     # An all-day event can last several days, so it counts on every day it covers.
     todays = sorted((b for b in blocks if b["start"].date() == today
                      or (b["all_day"] and b["start"].date() <= today < b["end"].date())),
@@ -438,7 +428,27 @@ with agenda_side.container(key="card-agenda"):
         ui.draw(ui.agenda(todays))
 
 
-# ---------- 3. The week, on the calendar (last week, this week, or next week) ----------
+# ---------- 3. Sleep plan: when to go to bed and wake up ----------
+st.write("")
+first_night = sleep_plan.tonight(now)
+morning_events = []
+if calendar_connected:
+    try:
+        morning_events = sleep_events(email, (first_night + timedelta(days=1)).isoformat(), str(time_zone))
+    except requests.HTTPError:
+        pass  # without the calendar, wake-up times assume nothing early
+nights = sleep_plan.plan_week(
+    first_night, morning_events,
+    db.get_plan(email, first_night.isoformat(), (first_night + timedelta(days=7)).isoformat()),
+    personal.sleep_habits(days, time_zone),
+    None if pd.isna(latest.get("sleep_need_hours")) else latest["sleep_need_hours"], time_zone,
+)
+ui.label("Sleep plan · tonight and the week ahead", "bedtime", "sleep")
+with st.container(key="card-sleep"):
+    ui.draw(ui.sleep_card(nights, now))
+
+
+# ---------- 4. The week, on the calendar (last week, this week, or next week) ----------
 st.write("")
 label_spot, week_spot = st.columns([2.2, 1.6], vertical_alignment="center")
 choice = week_spot.segmented_control(
@@ -497,7 +507,7 @@ with st.container(key="card-week"):
             f'<div class="note">The coach only adds a workout after you approve it.</div></div>')
 
 
-# ---------- 4. Trends ----------
+# ---------- 5. Trends ----------
 st.write("")
 label_spot, range_spot, refresh_spot = st.columns([2.2, 1.6, 1], vertical_alignment="center")
 span = range_spot.segmented_control(
@@ -534,19 +544,16 @@ weekly = charts.weekly_running(workouts, list(db.get_plan(email, monday.isoforma
                                                            (monday + timedelta(days=13)).isoformat())), today, weeks)
 this_week, last_week = weekly[weekly["when"] == "now"].iloc[0], weekly[weekly["when"] == "past"].iloc[-1]
 if this_week["planned"] > 0:
-    growth = ""
-    if last_week["done"] > 0:
-        percent = 100 * (this_week["planned"] - last_week["done"]) / last_week["done"]
-        growth = f", {'up' if percent >= 0 else 'down'} {abs(percent):.0f}% from last week"
-    run_note = (f'<div class="run-note"><span class="msr">check_circle</span>This week\'s plan: '
-                f'{this_week["planned"]:g} miles{growth}. Done so far: {this_week["done"]:g}.</div>')
+    run_note = (f'<div class="run-note"><span class="msr">check_circle</span><span><b>{this_week["done"]:g} of '
+                f'{this_week["planned"]:g} miles</b> done this week · {last_week["done"]:g} last week</span></div>')
 else:
     run_note = ('<div class="run-note"><span class="msr">info</span>No runs planned this week yet. '
-                'Press Plan my day and the coach will plan some.</div>')
+                'Ask the coach, or press Plan my day.</div>')
 goal = profile.get("goal") or "Set a goal on your Coaching profile"
 if profile.get("goal_date"):
     goal_day = date.fromisoformat(profile["goal_date"])
-    goal += f" · {goal_day:%b} {goal_day.day}"
+    weeks_left = (goal_day - today).days // 7
+    goal += f" · {goal_day:%b} {goal_day.day}" + (f" ({weeks_left} weeks away)" if weeks_left >= 2 else "")
 
 top_left, top_right = st.columns(2, gap="medium")
 with top_left:
@@ -558,7 +565,7 @@ with top_right:
     chart_card("hrv", "Heart rate variability", "Higher usually means more recovered.",
                charts.trend_chart(shown, "hrv_ms", "HRV", "ms", start_day, today),
                "Line chart of daily HRV with your normal range shaded.",
-               chart_legend(("var(--s1)", "Your HRV (ms)"), ("var(--s1-tint)", "Your normal range")))
+               chart_legend(("var(--s1)", "Your HRV (ms)"), ("var(--band)", "Your normal range")))
 bottom_left, bottom_right = st.columns(2, gap="medium")
 with bottom_left:
     chart_card("sleep", "Sleep stages", "Each night, stacked. The gray tick is how much sleep you needed.",
@@ -608,7 +615,7 @@ with st.expander("More charts", icon=":material/stacked_line_chart:"):
             st.altair_chart(weekdays, width="stretch", alt="Bar chart of average recovery by weekday.")
 
 
-# ---------- 5. Insights ----------
+# ---------- 6. Insights ----------
 st.write("")
 ui.label("Insights · patterns in your own data", "lightbulb", "insights")
 found = charts.insights(shown, shown_workouts, time_zone)

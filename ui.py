@@ -7,6 +7,7 @@ import html
 import math
 from datetime import datetime, timezone
 
+import anthropic
 import streamlit as st
 
 TOOL_ICONS = {
@@ -14,6 +15,8 @@ TOOL_ICONS = {
     "get_whoop_workouts": "directions_run", "get_weather": "partly_cloudy_day", "get_training_plan": "calendar_month",
     "get_training_history": "history", "update_training_plan": "edit_calendar", "save_daily_log": "save",
     "get_calendar_events": "event", "create_calendar_event": "calendar_add_on",
+    "get_personal_patterns": "person_search", "get_sleep_plan": "bedtime", "remember_about_them": "bookmark_add",
+    "set_goal": "flag",
 }
 
 WORKOUT_ICONS = {"run": "directions_run", "walk": "directions_walk", "cross": "exercise", "rest": "bedtime", "other": "event"}
@@ -50,6 +53,13 @@ def time_ago(saved_time):
 def clock(moment):
     """A time like 7:00 AM."""
     return f"{moment:%I:%M %p}".lstrip("0")
+
+
+def clock_range(start, end):
+    """'9:00–9:50 AM', or '11:30 AM–12:15 PM' when it crosses noon."""
+    if f"{start:%p}" == f"{end:%p}":
+        return f"{start:%I:%M}".lstrip("0") + "–" + clock(end)
+    return f"{clock(start)}–{clock(end)}"
 
 
 def label(text, icon, key):
@@ -176,8 +186,8 @@ def agenda(events):
         name = html.escape(event["title"])
         if event["kind"] == "coach":
             name = f'<span class="msr">directions_run</span>{name}'
-        when = "All day" if event.get("all_day") else f'{clock(event["start"])}–{clock(event["end"])}'
-        note = "Suggested by the coach · waiting for your OK" if event.get("suggested") else html.escape(event["calendar"])
+        when = "All day" if event.get("all_day") else clock_range(event["start"], event["end"])
+        note = "Suggested · waiting for your OK" if event.get("suggested") else html.escape(event["calendar"])
         rows.append(
             f'<li class="{"suggested" if event.get("suggested") else ""}">'
             f'<div class="t">{"All day" if event.get("all_day") else clock(event["start"])}</div>'
@@ -252,7 +262,99 @@ def insight_cards(found):
     return f'<div class="insights">{cards}</div>'
 
 
+def _hours_minutes(minutes):
+    """95 -> '1 h 35 min', 120 -> '2 h', 35 -> '35 min'."""
+    hours, minutes = divmod(int(minutes), 60)
+    return f"{hours} h {minutes} min" if hours and minutes else f"{hours} h" if hours else f"{minutes} min"
+
+
+def _big_time(moment):
+    return f'{moment:%I:%M}'.lstrip("0") + f'<small>{moment:%p}</small>'
+
+
+def sleep_card(nights, now):
+    """Tonight's bedtime and wake-up time in big type, and a timeline of the week ahead.
+    nights come from sleep_plan.plan_week(); the first one is tonight."""
+    tonight = nights[0]
+    first = tonight["first"]
+    late = tonight["bed"] <= now < tonight["wake"]  # it's already past bedtime
+    if late:
+        left = int((tonight["wake"] - now).total_seconds() // 60)
+        bed_label, bed_value = "Go to sleep", "Now"
+        why = (f"Your bedtime was {clock(tonight['bed'])}. If you fall asleep soon you'll still get about "
+               f"{_hours_minutes(left - left % 15)} before your alarm.")
+    else:
+        bed_label, bed_value = "In bed by", _big_time(tonight["bed"])
+        if tonight["set_by_first"]:
+            why = f"Set by <b>{html.escape(first['title'])}</b> at {clock(first['start'])}."
+        elif first:
+            why = (f"Near your usual wake-up time, which keeps your body clock steady. "
+                   f"First up: <b>{html.escape(first['title'])}</b> at {clock(first['start'])}.")
+        else:
+            why = "Nothing early tomorrow. Waking near your usual time keeps your body clock steady."
+        # The math, so it's clear where the bedtime comes from.
+        why += (f'<span class="sl-math">{tonight["need_hours"]:g} h needed ÷ {tonight["efficiency"]}% sleep efficiency '
+                f'= {_hours_minutes(tonight["in_bed_minutes"])} in bed</span>')
+    chips = [("coffee", f"No caffeine after {clock(tonight['caffeine_cutoff'])}", "")]
+    shift = tonight["earlier_than_usual_minutes"]
+    if shift is not None and abs(shift) >= 15:
+        chips.append(("schedule", f"{_hours_minutes(abs(shift))} {'earlier' if shift > 0 else 'later'} than usual", ""))
+    left_side = (
+        f'<div class="sl-tonight"><div class="sl-pair">'
+        f'<div class="sl-time"><div class="k"><span class="msr">bedtime</span>{bed_label}</div>'
+        f'<div class="big">{bed_value}</div></div>'
+        f'<div class="sl-time"><div class="k"><span class="msr">alarm</span>Wake up</div>'
+        f'<div class="big">{_big_time(tonight["wake"])}</div></div></div>'
+        f'<p class="sl-why">{why}</p>{badges(chips)}</div>')
+
+    # The week ahead: each night is a bar from bedtime to wake-up on a 8 PM to 1 PM scale.
+    span = 17 * 60  # minutes from 8 PM to 1 PM
+
+    def place(moment, night):
+        start = datetime.combine(night, datetime.min.time(), moment.tzinfo).replace(hour=20)
+        return max(0.0, min(100.0, 100 * (moment - start).total_seconds() / 60 / span))
+
+    axis = "".join(f'<span style="left:{100 * (hour - 20) * 60 / span:.2f}%">{(hour - 1) % 12 + 1} {"PM" if hour % 24 >= 12 else "AM"}</span>'
+                   for hour in (21, 24, 27, 30, 33, 36))
+    rows = []
+    for k, night in enumerate(nights):
+        day = night["night"]
+        name = "Tonight" if k == 0 else f"{day:%a}"
+        left, right = place(night["bed"], day), place(night["wake"], day)
+        times = f'{clock(night["bed"])} → {clock(night["wake"])}'
+        marker = ""
+        if night["first"]:
+            title = f'{night["first"]["title"]} · {clock(night["first"]["start"])}'
+            marker = (f'<i class="ev" style="left:{place(night["first"]["start"], day):.2f}%" '
+                      f'title="{html.escape(title)}"></i>')
+        rows.append(
+            f'<div class="sl-row{" is-tonight" if k == 0 else ""}"><div class="d">{name}</div>'
+            f'<div class="track"><div class="bar" style="left:{left:.2f}%;width:{right - left:.2f}%" '
+            f'title="{name}: {times}"></div>{marker}</div><div class="tm">{times}</div></div>')
+    week = (f'<div class="sl-week"><div class="sl-row sl-head"><div class="d"></div><div class="track sl-axis">{axis}</div>'
+            f'<div class="tm"></div></div>{"".join(rows)}'
+            f'<div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Time in bed</span>'
+            f'<span><i class="ev-key"></i>First thing the next morning</span></div></div>')
+    return f'<div class="sleep">{left_side}{week}</div>'
+
+
 # ---------- Showing what the agent did ----------
+
+def claude_problem(error):
+    """A failed request to Claude, in plain English: (short label, one-sentence explanation)."""
+    if isinstance(error, anthropic.AuthenticationError):
+        return "Claude didn't accept the API key", "The `anthropic_api_key` in secrets.toml isn't valid."
+    if isinstance(error, anthropic.BadRequestError):
+        if "credit" in error.message.lower():
+            return "Claude couldn't run", "The Claude account is out of credits. Add more at console.anthropic.com."
+        return "Claude couldn't run", f"Claude said the request was invalid: {error.message}"
+    if isinstance(error, anthropic.RateLimitError):
+        return "Claude is busy", "Too many requests to Claude right now. Wait a minute and try again."
+    if isinstance(error, anthropic.APIConnectionError):
+        return "Couldn't reach Claude", "Couldn't connect to Claude. Check the internet connection and try again."
+    status = getattr(error, "status_code", "?")
+    return "Claude had a problem", f"Claude returned an error ({status}). Try again in a minute."
+
 
 def tools_used(steps):
     return sum(1 for step in steps if step["kind"] == "tool_call")
@@ -288,6 +390,17 @@ def summarize(tool, tool_input, output):
             return f"{len(today['events'])} events today, {len(today['free_windows'])} free windows"
         if tool == "create_calendar_event":
             return f"suggested {tool_input['start_time']} for {tool_input['minutes']} min, waiting for your OK"
+        if tool == "get_personal_patterns":
+            hrv = output["hrv"]
+            patterns = f"{len(output['patterns_in_their_data'])} patterns in your data"
+            return f"HRV {hrv['status']}, {patterns}" if isinstance(hrv, dict) else patterns
+        if tool == "get_sleep_plan":
+            night = output["nights"][0]
+            return f"tonight: in bed by {night['bedtime']}, up at {night['wake_up']}"
+        if tool == "remember_about_them":
+            return f"remembered: {tool_input['note']}"
+        if tool == "set_goal":
+            return f"saved your goal: {tool_input['goal']}"
     except (KeyError, IndexError, TypeError):
         pass  # no data, or an older format: fall back to a plain "done"
     return "done"
@@ -308,7 +421,8 @@ def show_steps(steps, raw=False):
             asked[step["tool"]] = step["input"]  # shown together with its result, below
         elif kind == "tool_result":
             tool_input = step.get("input", asked.get(step["tool"])) or {}
-            days = f" (last {tool_input['days']} days)" if "days" in tool_input else ""
+            ahead = step["tool"] == "get_calendar_events"
+            days = f" ({'next' if ahead else 'last'} {tool_input['days']} days)" if "days" in tool_input else ""
             if step["failed"]:
                 st.error(f"{step['tool']} failed: {step['output'].get('error')}", icon=":material/error:")
             else:
@@ -320,6 +434,8 @@ def show_steps(steps, raw=False):
                 st.json({"Claude asked for": tool_input, "The tool sent back": step["output"]}, expanded=1)
         elif kind == "decision":
             st.success(plain(step["text"]), icon=":material/check_circle:")
+        elif kind == "question":
+            pass  # a chat message: the page already shows it
         else:  # "stopped"
             st.warning(plain(step["text"]), icon=":material/warning:")
 

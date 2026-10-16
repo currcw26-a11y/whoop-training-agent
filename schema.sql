@@ -151,3 +151,9 @@ alter table workouts      enable row level security;
 alter table training_plan enable row level security;
 alter table agent_runs    enable row level security;
 alter table screen_time   enable row level security;
+
+-- ===================== Added for the personalized coach =====================
+-- Short notes the coach remembers about each person (one per line), and which runs
+-- were "Plan my day" and which were chat messages on the Ask the coach page.
+alter table profiles add column if not exists coach_notes text;
+alter table agent_runs add column if not exists kind text not null default 'plan';

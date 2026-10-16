@@ -19,6 +19,7 @@ st.logo(str(HERE / f"assets/logo-{'dark' if dark else 'light'}.svg"), size="larg
 
 pages = [st.Page("home.py", title="Home", icon=":material/home:", default=True)]
 if st.user.is_logged_in:
+    pages.append(st.Page("chat.py", title="Ask the coach", icon=":material/forum:"))
     pages.append(st.Page("settings.py", title="Coaching profile", icon=":material/tune:"))
     # Add the person to the database the first time we see them (once per visit).
     if "profile_ready" not in st.session_state:

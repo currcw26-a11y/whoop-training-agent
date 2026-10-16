@@ -208,10 +208,12 @@ def set_event_status(email, day, status, event_id=None):
 
 # ---------- Agent runs ----------
 
-def save_agent_run(email, model, steps, final_decision, cost_usd):
+def save_agent_run(email, model, steps, final_decision, cost_usd, kind="plan"):
+    """Save one run of the coach. kind is 'plan' (the Plan my day button) or 'chat' (one message)."""
     _client().table("agent_runs").insert({
         "email": email,
         "model": model,
+        "kind": kind,
         "steps": steps,
         "final_decision": final_decision,
         "cost_usd": round(cost_usd, 5),
@@ -219,11 +221,35 @@ def save_agent_run(email, model, steps, final_decision, cost_usd):
 
 
 def latest_agent_run(email):
+    """The newest Plan my day run (not chat messages)."""
     rows = (
-        _client().table("agent_runs").select("*").eq("email", email)
+        _client().table("agent_runs").select("*").eq("email", email).eq("kind", "plan")
         .order("created_at", desc=True).limit(1).execute().data
     )
     return rows[0] if rows else None
+
+
+def recent_chats(email, since):
+    """Chat messages with the coach since a time (ISO text), oldest first. Each row's first
+    step holds the person's question, and final_decision holds the coach's answer."""
+    return (
+        _client().table("agent_runs").select("*").eq("email", email).eq("kind", "chat")
+        .gte("created_at", since).order("created_at").limit(40).execute().data
+    )
+
+
+# ---------- What the coach remembers ----------
+# Short notes the coach saves about a person (like "left knee sore after long runs").
+# They're kept in profiles.coach_notes, one note per line, and people can edit them
+# on their Coaching profile page.
+
+def get_coach_notes(email):
+    profile = get_profile(email) or {}
+    return [line for line in (profile.get("coach_notes") or "").splitlines() if line.strip()]
+
+
+def save_coach_notes(email, notes):
+    _client().table("profiles").update({"coach_notes": "\n".join(notes) or None}).eq("email", email).execute()
 
 
 def count_agent_runs(email=None):
