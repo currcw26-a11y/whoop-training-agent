@@ -12,6 +12,10 @@ rules from sports and sleep research. **[RESEARCH.md](RESEARCH.md)** explains ho
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
+**[Open the real app](https://clive-training-coach.streamlit.app)**: anyone can sign in with Google and connect a
+WHOOP. Connecting Google Calendar needs an invite (Google only allows invited testers to share calendar data with an
+app until it's verified).
+
 **[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: the whole site (Home, Ask the coach, and
 Coaching profile) with sample data, and no sign-in, WHOOP, or Google Calendar needed. The AI coach is live there too:
 press **Plan my day** or message it on **Ask the coach**, and it works on the sample data (nothing is saved).
@@ -28,7 +32,7 @@ press **Plan my day** or message it on **Ask the coach**, and it works on the sa
 - [x] **Dashboard update:** last, this, and next week on the calendar (with all-day events), 7/30/90-day trends, running miles done vs. planned, and WHOOP data that downloads itself
 - [x] **Personalized coach:** research-based rules, your own normal ranges and patterns, memory, an
   "Ask the coach" chat, and a sleep plan (bedtime, wake-up time, caffeine cutoff) for the week ahead
-- [ ] **Phase 4:** Put it online (Streamlit Community Cloud)
+- [x] **Phase 4:** Online at [clive-training-coach.streamlit.app](https://clive-training-coach.streamlit.app) (Streamlit Community Cloud)
 - [ ] **Phase 5 (optional):** A morning plan sent automatically
 
 ## How the agent works
@@ -131,7 +135,7 @@ It opens at http://localhost:8501.
 ## Limits to know about
 
 - **WHOOP** lets an app connect to at most 10 WHOOP members until WHOOP approves it.
-- **Google Calendar:** until Google verifies the app, people see a "Google hasn't
-  verified this app" warning, and at most 100 people can connect.
+- **Google Calendar:** until Google verifies the app, only people invited as testers (up to 100) can
+  connect their calendar, and they reconnect every 7 days. Signing in with Google works for anyone.
 - **Claude credits** are shared by everyone who uses the site, so there's a daily cap per
   person in `config.py`. Each run costs a fraction of a cent, so most people never reach it.
