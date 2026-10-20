@@ -23,8 +23,9 @@ EFFORT = "medium"
 MAX_STEPS = 6                  # rounds of tool use per message
 MAX_MESSAGE_CHARS = 500        # longest message a visitor can send
 MAX_BODY_BYTES = 60_000        # the page's sample data is about 15 KB
-PER_VISITOR = (12, 5 * 60)     # at most 12 messages per 5 minutes from one visitor
-PER_SERVER_HOUR = 300          # and at most 300 an hour in all (per running copy of this function)
+PER_VISITOR = (12, 5 * 60)     # at most 12 messages per 5 minutes from one browser
+PER_NETWORK = (200, 5 * 60)    # and 200 from one internet address (a whole class on campus Wi-Fi shares one)
+PER_SERVER_HOUR = 1000         # and 1,000 an hour in all (the key's spending limit is the real cap)
 
 # ---------- The instructions (a shorter version of agent.py's) ----------
 
@@ -338,7 +339,7 @@ What you remember about him:
 def coach(data, mode, message, earlier):
     """Run the coach once. Returns the answer, the steps to show, and the changes for the page."""
     demo = Demo(data)
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=45, max_retries=1)
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=40, max_retries=2)
     tools = TOOLS + ([GOAL_TOOL] if mode == "chat" else [])
     messages = []
     for asked, answered in earlier:
@@ -379,22 +380,27 @@ def coach(data, mode, message, earlier):
 
 # ---------- Checking requests, and the speed limits ----------
 
-visits = defaultdict(deque)
+visits = defaultdict(deque)   # recent message times, per browser and per internet address
 hour = deque()
 
 
-def allowed(visitor):
+def _recent(key, window, now):
+    times = visits[key]
+    while times and now - times[0] > window:
+        times.popleft()
+    return times
+
+
+def allowed(browser, network):
+    """True if this browser, this internet address, and the whole site are all under their limits."""
     now = time.time()
-    count, window = PER_VISITOR
-    recent = visits[visitor]
-    while recent and now - recent[0] > window:
-        recent.popleft()
+    mine, ours = _recent(("browser", browser), PER_VISITOR[1], now), _recent(("network", network), PER_NETWORK[1], now)
     while hour and now - hour[0] > 3600:
         hour.popleft()
-    if len(recent) >= count or len(hour) >= PER_SERVER_HOUR:
+    if len(mine) >= PER_VISITOR[0] or len(ours) >= PER_NETWORK[0] or len(hour) >= PER_SERVER_HOUR:
         return False
-    recent.append(now)
-    hour.append(now)
+    for times in (mine, ours, hour):
+        times.append(now)
     return True
 
 
@@ -418,15 +424,18 @@ def clean_request(body):
     return mode, message, earlier, data
 
 
-def respond(body, visitor):
-    """(status code, reply) for one request from the page."""
+def respond(body, network):
+    """(status code, reply) for one request from the page. network is the visitor's internet address."""
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return 503, {"error": "The demo coach isn't switched on yet."}
     try:
         mode, message, earlier, data = clean_request(body)
     except (ValueError, AttributeError, TypeError) as error:
         return 400, {"error": str(error) or "That request didn't look right."}
-    if not allowed(visitor):
+    browser = str(body.get("visitor") or "")  # a random ID the page makes for each browser
+    if not re.fullmatch(r"[A-Za-z0-9-]{8,40}", browser):
+        browser = network
+    if not allowed(browser, network):
         return 429, {"error": "The coach needs a short breather. Try again in a few minutes."}
     try:
         return 200, coach(data, mode, message, earlier)
@@ -452,8 +461,8 @@ class handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(size) or b"{}")
         except ValueError:
             return self._send(400, {"error": "That request didn't look right."})
-        visitor = (self.headers.get("x-forwarded-for") or self.client_address[0]).split(",")[0].strip()
-        self._send(*respond(body if isinstance(body, dict) else {}, visitor))
+        network = (self.headers.get("x-forwarded-for") or self.client_address[0]).split(",")[0].strip()
+        self._send(*respond(body if isinstance(body, dict) else {}, network))
 
     def _send(self, status, payload):
         data = json.dumps(payload).encode()

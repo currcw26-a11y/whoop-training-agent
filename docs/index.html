@@ -1489,11 +1489,20 @@ function snapshot() {
       events: d.events.map(([start, end, title, calendar, tag]) => ({ start, end, title, calendar, tag: tag || null })) })),
   };
 }
+// A random ID for this browser, so the per-person limit counts people, not the shared campus Wi-Fi.
+const VISITOR_ID = (() => {
+  const fresh = () => (crypto.randomUUID ? crypto.randomUUID() : `v${Date.now()}${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, "");
+  try {
+    const saved = localStorage.getItem("coach-visitor");
+    if (saved) return saved;
+    const made = fresh(); localStorage.setItem("coach-visitor", made); return made;
+  } catch { return fresh(); }  // private windows can block storage; a per-visit ID still works
+})();
 async function askCoach(payload) {
   let response;
   try {
     response = await fetch("api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
-                                         body: JSON.stringify({ ...payload, data: snapshot() }) });
+                                         body: JSON.stringify({ ...payload, visitor: VISITOR_ID, data: snapshot() }) });
   } catch {
     throw new Error("Couldn't reach the coach. Check your internet connection and try again.");
   }
