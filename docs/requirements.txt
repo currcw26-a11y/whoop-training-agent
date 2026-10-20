@@ -1,0 +1,2 @@
+# The Python library the demo's AI coach (api/chat.py) needs. Vercel installs it when it deploys.
+anthropic==1.12.1

@@ -12,8 +12,9 @@ rules from sports and sleep research. **[RESEARCH.md](RESEARCH.md)** explains ho
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
-**[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: a mock-up of the whole site (Home,
-Ask the coach, and Coaching profile) with sample data. It doesn't need any sign-in, WHOOP, or Google Calendar.
+**[See the live demo](https://whoop-training-agent-docs.vercel.app/)**: the whole site (Home, Ask the coach, and
+Coaching profile) with sample data, and no sign-in, WHOOP, or Google Calendar needed. The AI coach is live there too:
+press **Plan my day** or message it on **Ask the coach**, and it works on the sample data (nothing is saved).
 
 > Training suggestions only, **not medical advice**.
 
@@ -102,6 +103,7 @@ The database blocks public access, and only the website's server can read it.
 | `style.css` | The look of the site (matches the demo): cards, tiles, the agenda, the week calendar |
 | `assets/` | The logo shown in the top bar (light and dark versions) |
 | `docs/index.html` | The demo website (sample data; Home, Ask the coach, and Coaching profile) |
+| `docs/api/chat.py` | The demo's live AI coach: a small Vercel function that runs the tool loop on the sample data |
 
 ## Run it on your computer (Windows)
 

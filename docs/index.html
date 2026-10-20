@@ -382,6 +382,37 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .conn .ok { color: var(--good-text); background: var(--good-chip); font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; margin-left: 6px; }
 .stack > * + * { margin-top: 16px; }
 
+/* ---------- Live coach ---------- */
+.live-note { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+button.btn { font-family: inherit; cursor: pointer; }
+button.btn:disabled { opacity: 0.7; cursor: progress; }
+.live-head { display: flex; align-items: center; gap: 8px; margin: 32px 0 4px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.suggest button {
+  font: 500 13.5px/1.2 Inter, system-ui, sans-serif; color: var(--text); background: var(--card); cursor: pointer;
+  border: 1px solid var(--border-strong); border-radius: 999px; padding: 8px 13px; display: inline-flex; gap: 6px; align-items: center;
+}
+.suggest button:hover { background: var(--raised); }
+.suggest .icon { font-size: 17px; vertical-align: 0; color: var(--s1); }
+form.composer { color: var(--text); }
+form.composer:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--s1) 45%, transparent); }
+.composer textarea { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; color: var(--text); font: 15px/1.5 Inter, system-ui, sans-serif; outline: none; max-height: 140px; padding: 0; }
+.composer textarea::placeholder { color: var(--muted); }
+.composer button.send { border: 0; cursor: pointer; background: var(--s1); color: #fff; flex: none; }
+.composer button.send:disabled { background: var(--border-strong); color: var(--muted); cursor: default; }
+.typing { display: inline-flex; gap: 5px; align-items: center; color: var(--text-2); font-size: 14px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: 0.2s; }
+.typing i:nth-child(3) { animation-delay: 0.4s; margin-right: 4px; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .typing i { animation: none; } }
+.changed { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.changed a { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--s1-tint); color: var(--s1); }
+.changed a:hover { text-decoration: none; background: color-mix(in srgb, var(--s1) 20%, transparent); }
+.err { color: var(--bad-text); }
+.agenda li.suggested .e { border-left-style: dashed; }
+
 /* ---------- Footer ---------- */
 footer { border-top: 1px solid var(--border); padding: 26px 0 40px; color: var(--text-2); font-size: 13.5px; }
 footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -429,21 +460,19 @@ footer p { margin: 0; max-width: 640px; }
     <div class="card">
       <div class="card-top">
         <div class="eyebrow"><span class="icon">auto_awesome</span>Today's workout</div>
-        <div class="meta">Planned 6:42 AM · 12 tools · claude-haiku-5-5</div>
+        <div class="meta" id="plan-meta"></div>
       </div>
-      <div class="headline">Easy run</div>
-      <div class="when"><span class="icon">schedule</span>7:00–7:40 AM · 2 miles</div>
+      <div class="headline" id="headline"></div>
+      <div class="when" id="when"><span class="icon">schedule</span><span id="when-text"></span></div>
       <p class="why" id="why"></p>
-      <div class="badges">
-        <span class="badge on-cal"><span class="icon">event_available</span>Added to Google Calendar</span>
-        <span class="badge"><span class="icon">edit_calendar</span>Moved from Wednesday</span>
-      </div>
+      <div class="badges" id="badges"></div>
       <div class="actions">
-        <span class="btn primary" title="In the real app, this runs the coach"><span class="icon">auto_awesome</span>Plan my day</span>
+        <button class="btn primary" id="plan-btn" type="button"><span class="icon">auto_awesome</span>Plan my day</button>
         <a class="btn" href="#coach"><span class="icon">forum</span>Ask the coach</a>
       </div>
+      <p class="live-note" id="plan-note">The coach on this page is real AI working on sample data. Press Plan my day to watch it decide.</p>
       <details class="steps">
-        <summary><span class="icon">account_tree</span>How the coach decided <span class="muted count-note" style="font-weight:500">· 12 tools</span><span class="icon chev">expand_more</span></summary>
+        <summary><span class="icon">account_tree</span>How the coach decided <span class="muted count-note" id="steps-count" style="font-weight:500"></span><span class="icon chev">expand_more</span></summary>
         <div id="steps"></div>
       </details>
     </div>
@@ -518,13 +547,13 @@ footer p { margin: 0; max-width: 640px; }
       </div>
       <div class="card chart-card">
         <h2>Running miles per week</h2>
-        <p class="sub">Goal: Run my first 10K · Dec 6 (7 weeks away)</p>
+        <p class="sub" id="goal-sub"></p>
         <div class="legend">
           <span><i class="swatch" style="background: var(--s1)"></i>Miles run</span>
           <span><i class="swatch dashed blue"></i>Planned by the coach</span>
         </div>
         <svg class="chart" id="miles-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of running miles per week, with planned miles for this week and next"></svg>
-        <div class="note"><span class="icon">check_circle</span><span><b>2 of 7.5 miles</b> done this week · 7 last week</span></div>
+        <div class="note"><span class="icon">check_circle</span><span id="run-note"></span></div>
       </div>
     </div>
 
@@ -570,9 +599,15 @@ footer p { margin: 0; max-width: 640px; }
   <p class="intro">Ask about a workout, your sleep, or a goal you're working toward. The coach looks at your WHOOP data,
     your calendar, the weather, and your plan before it answers, and it remembers what you tell it.</p>
   <div id="chat"></div>
-  <div class="composer" aria-hidden="true"><span>Message the coach</span><span class="send"><span class="icon">arrow_upward</span></span></div>
-  <p class="fine">Demo: this is a saved sample conversation. In the real app, you type here and the coach answers from your
-    own data. Training suggestions only, not medical advice.</p>
+  <div class="live-head"><i class="live-dot"></i><span id="live-label">Your turn: the coach is live</span></div>
+  <div id="live" aria-live="polite"></div>
+  <div class="suggest" id="suggest"></div>
+  <form class="composer" id="composer">
+    <textarea id="message" rows="1" maxlength="500" placeholder="Ask about Clive's training, sleep, or plan" aria-label="Message the coach"></textarea>
+    <button class="send" id="send" type="submit" aria-label="Send" disabled><span class="icon">arrow_upward</span></button>
+  </form>
+  <p class="fine" id="live-fine">This is real Claude AI coaching Clive's sample data. Nothing you type is saved, and any changes reset when
+    you reload. Don't type personal information. Training suggestions only, not medical advice.</p>
 </div>
 
 <!-- ================================= COACHING PROFILE ================================ -->
@@ -584,8 +619,8 @@ footer p { margin: 0; max-width: 640px; }
   <div class="stack" style="margin-top: 22px">
     <div class="card">
       <dl class="fields">
-        <dt>What are you training for?</dt><dd>Run my first 10K</dd>
-        <dt>Goal date</dt><dd>Sunday, December 6, 2026</dd>
+        <dt>What are you training for?</dt><dd id="p-goal"></dd>
+        <dt>Goal date</dt><dd id="p-goal-date"></dd>
         <dt>What do you do now?</dt><dd>2–3 miles, 3 times a week, plus club tennis</dd>
         <dt>Your city</dt><dd>Winston-Salem, North Carolina, US <span class="muted">· America/New_York</span></dd>
         <dt>When are you willing to run?</dt><dd><span class="tag">Early morning (6–9am)</span><span class="tag">Afternoon (3–6pm)</span></dd>
@@ -596,11 +631,7 @@ footer p { margin: 0; max-width: 640px; }
       <div class="eyebrow"><span class="icon">bookmark</span>What the coach remembers</div>
       <div class="card">
         <p class="sub" style="margin: 0">The coach saved these from your messages and reads them every time. You can edit or delete any of them.</p>
-        <ul class="notes">
-          <li><span class="when3">Oct 11</span>Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now.</li>
-          <li><span class="when3">Oct 12</span>Plays club tennis Tuesdays and Thursdays, 4–5:30 PM.</li>
-          <li><span class="when3">Oct 12</span>Likes to run early, before 9:30 classes.</li>
-        </ul>
+        <ul class="notes" id="notes"></ul>
       </div>
     </div>
 
@@ -633,8 +664,8 @@ footer p { margin: 0; max-width: 640px; }
   <div class="wrap">
     <p><b style="color: var(--text)">Training Coach</b> by Clive Curry, for an AI seminar at Wake Forest.
       This page is a demo with <b>sample data</b>. The real app connects to WHOOP and Google Calendar, and a Claude
-      agent (claude-haiku-5-5) plans each day and answers messages by calling up to 15 tools. Training suggestions only,
-      not medical advice.</p>
+      agent (claude-haiku-5-5) plans each day and answers messages by calling up to 15 tools. Here, the same kind of coach
+      works live on the sample data: try Plan my day or Ask the coach. Training suggestions only, not medical advice.</p>
     <p><a href="privacy.html">Privacy policy</a> · <a href="https://github.com/currcw26-a11y/whoop-training-agent">See the code on GitHub</a></p>
   </div>
 </footer>
@@ -663,10 +694,13 @@ const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
 // ---------- Dates (all in UTC, so the page looks the same in every time zone) ----------
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const toDate = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
 const addDays = (iso, n) => { const t = toDate(iso); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 const short = iso => { const t = toDate(iso); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}`; };
+const longDate = iso => { const t = toDate(iso); return `${WEEKDAYS_LONG[t.getUTCDay()]}, ${MONTHS_LONG[t.getUTCMonth()]} ${t.getUTCDate()}, ${t.getUTCFullYear()}`; };
 const weekday = iso => WEEKDAYS[toDate(iso).getUTCDay()];
 const TODAY_ISO = "2026-10-15";
 
@@ -702,7 +736,37 @@ function personalTrend(key) {
   const status = average < middle - spread ? "below" : average > middle + spread ? "above" : "within";
   return { average: round(average, 1), low: Math.round(middle - spread), high: Math.round(middle + spread), status };
 }
-const HRV_TREND = personalTrend("hrv");
+const HRV_TREND = personalTrend("hrv"), RHR_TREND = personalTrend("rhr");
+
+// ---------- Clive's coaching profile and what the coach remembers ----------
+const PROFILE = { goal: "Run my first 10K", goal_date: "2026-12-06", experience: "2-3 miles, 3 times a week, plus club tennis",
+                  run_times: "Early morning (6-9am), Afternoon (3-6pm)" };
+const NOTES = [
+  { when: "Oct 11", text: "Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now." },
+  { when: "Oct 12", text: "Plays club tennis Tuesdays and Thursdays, 4–5:30 PM." },
+  { when: "Oct 12", text: "Likes to run early, before 9:30 classes." },
+];
+const WORKOUT_LOG = {
+  running_miles_this_week_so_far: 2.0, running_miles_last_week: 7.0,
+  workouts: [
+    { date: "2026-10-13", sport: "Club tennis", minutes: 90, strain: 12.6 },
+    { date: "2026-10-12", sport: "Running", miles: 2.0, minutes: 22, strain: 8.9, avg_hr: 148 },
+    { date: "2026-10-10", sport: "Cycling", minutes: 30, strain: 6.1 },
+    { date: "2026-10-09", sport: "Running", miles: 3.0, minutes: 36, strain: 10.8, avg_hr: 151 },
+    { date: "2026-10-07", sport: "Running", miles: 2.0, minutes: 23, strain: 8.7, avg_hr: 147 },
+    { date: "2026-10-06", sport: "Club tennis", minutes: 90, strain: 8.4 },
+    { date: "2026-10-05", sport: "Running", miles: 2.0, minutes: 23, strain: 9.1, avg_hr: 149 },
+    { date: "2026-10-03", sport: "Running", miles: 2.0, minutes: 24, strain: 8.2, avg_hr: 150 },
+    { date: "2026-10-01", sport: "Club tennis", minutes: 75, strain: 9.8 },
+  ],
+};
+const WEATHER = {
+  location: "Winston-Salem, North Carolina",
+  today: { summary: "Sunny, 54–76°F, 0% chance of rain", sunrise: "07:31", sunset: "18:43",
+           hourly: [[6, 54], [8, 56], [10, 63], [12, 70], [14, 74], [16, 76], [18, 71], [20, 64]]
+             .map(([h, f]) => ({ time: `${String(h).padStart(2, "0")}:00`, temp_f: f, rain_chance_pct: 0 })) },
+  tomorrow: { summary: "Partly cloudy, 55–72°F, 10% chance of rain" },
+};
 
 // ---------- The calendar: 3 weeks of classes, tennis, and the coach's workouts ----------
 const C = (start, end, title, kind = "classes", tag) => [start, end, title, kind, tag];
@@ -739,11 +803,21 @@ const WEEKS = {
     { plan: ["bedtime", "Rest day", false], events: [C("11:00", "12:30", "Brunch with family", "personal")], allDay: [["Family weekend", "personal"]] },
   ] },
 };
+// Each day's planned workout in words (what the AI coach reads and changes).
+const WORKOUTS = {
+  "2026-10-05": "Easy run, 2 miles", "2026-10-06": "Club tennis (no run)", "2026-10-07": "Easy run, 2 miles", "2026-10-08": "Rest day",
+  "2026-10-09": "Long run/walk, 3 miles", "2026-10-10": "Easy bike, 30 min", "2026-10-11": "Rest day",
+  "2026-10-12": "Easy run, 2 miles", "2026-10-13": "Club tennis (no run)", "2026-10-14": "Rest day (run moved to Thursday)",
+  "2026-10-15": "Easy run, 2 miles", "2026-10-16": "Rest day (CHM 111 midterm)", "2026-10-17": "Long run/walk, 3.5 miles", "2026-10-18": "Easy bike, 30 min",
+  "2026-10-19": "Easy run, 2.5 miles", "2026-10-20": "Club tennis (no run)", "2026-10-21": "Easy run, 2 miles", "2026-10-22": "Club tennis (no run)",
+  "2026-10-23": "Easy bike, 30 min", "2026-10-24": "Long run/walk, 3.5 miles", "2026-10-25": "Rest day",
+};
+const ALL_DAYS = [];
+for (const week of Object.values(WEEKS)) week.days.forEach((d, i) => { d.date = addDays(week.monday, i); d.workout = WORKOUTS[d.date]; ALL_DAYS.push(d); });
+const dayOf = iso => ALL_DAYS.find(d => d.date === iso);
+const eventsOn = iso => (dayOf(iso) || { events: [] }).events;
 const CALENDAR_NAMES = { classes: "WFU Classes", personal: "Tennis & personal", coach: "Training Coach" };
 const KIND_COLORS = { classes: "var(--s1)", personal: "var(--s3)", coach: "var(--s2)" };
-// Every timed event, by date, for the sleep plan and today's list.
-const EVENTS_BY_DATE = {};
-for (const week of Object.values(WEEKS)) week.days.forEach((d, i) => { d.date = addDays(week.monday, i); EVENTS_BY_DATE[d.date] = d.events; });
 
 // ---------- Small helpers ----------
 const SVG = "http://www.w3.org/2000/svg";
@@ -760,6 +834,7 @@ function html(tag, className, inner) {
   if (inner !== undefined) node.innerHTML = inner;
   return node;
 }
+const esc = text => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const hours = hhmm => { const [h, m] = hhmm.split(":").map(Number); return h + m / 60; };
 // Minutes after midnight -> "10:30 PM" (works past midnight too).
 const clockMin = minutes => {
@@ -779,14 +854,32 @@ function bar(x, y, w, h, r = 4) {
   r = Math.max(0, Math.min(r, w / 2, h));
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
+// 'Easy run, 2 miles at 7:00 AM' -> ['Easy run', '2 miles at 7:00 AM'] (like ui.split_workout)
+function splitWorkout(text) {
+  text = text.replace(/\*\*/g, "").replace(/^today'?s workout:\s*/i, "").replace(/[.:]$/, "").trim();
+  const paren = text.match(/^(.*?)\s*\((.*)\)$/);
+  if (paren) return [paren[1], paren[2].charAt(0).toUpperCase() + paren[2].slice(1)];
+  const [title, ...rest] = text.split(", ");
+  return [title, rest.join(" · ")];
+}
+// A plan chip (icon, short text) for a workout written in words.
+function chipFor(text, done = false) {
+  const t = text.toLowerCase(), miles = (t.match(/(\d+(?:\.\d+)?)\s*(?:mi\b|miles?)/) || [])[1], mins = (t.match(/(\d+)\s*min/) || [])[1];
+  let icon = "event", label = splitWorkout(text)[0];
+  if (t.includes("rest")) { icon = "bedtime"; label = "Rest day"; }
+  else if (t.includes("tennis")) { icon = "sports_tennis"; label = "Tennis, no run"; }
+  else if (/bike|cycl|swim|yoga|strength|elliptical|cross/.test(t)) { icon = "pedal_bike"; label = `${splitWorkout(text)[0]}${mins ? ` · ${mins} min` : ""}`; }
+  else if (/run|walk|jog/.test(t)) { icon = "directions_run"; label = `${t.includes("long") ? "Long run" : "Run"}${miles ? ` · ${miles} mi` : mins ? ` · ${mins} min` : ""}`; }
+  return [icon, label.length > 22 ? label.slice(0, 21) + "…" : label, done];
+}
 
 // =====================================================================================
-// Sleep plan (the same rules as sleep_plan.py)
+// Sleep plan (the same rules as sleep_plan.py). It updates if the coach changes a morning.
 // =====================================================================================
 const USUAL_WAKE = 7 * 60 + 15, USUAL_BED = 23 * 60 + 50, EFFICIENCY = 0.9;
 function planNight(night, need) {
   const morning = addDays(night, 1);
-  const early = (EVENTS_BY_DATE[morning] || []).filter(e => hours(e[0]) >= 4 && hours(e[0]) < 13).sort((a, b) => hours(a[0]) - hours(b[0]));
+  const early = eventsOn(morning).filter(e => hours(e[0]) >= 4 && hours(e[0]) < 13).sort((a, b) => hours(a[0]) - hours(b[0]));
   const first = early[0] || null;
   const relaxed = USUAL_WAKE + 30;  // at most 30 minutes after your usual wake-up time
   let wake = relaxed, setByFirst = false;
@@ -800,15 +893,15 @@ function planNight(night, need) {
   return { night, first, wake, bed, setByFirst, need, inBed: Math.round(inBed / 5) * 5,
            caffeine: Math.floor((bed - 360) / 30) * 30, earlier: Math.round((USUAL_BED - bed) / 5) * 5 };
 }
-const NIGHTS = [planNight(TODAY_ISO, 8.3)];
-for (let k = 1; k < 7; k++) NIGHTS.push(planNight(addDays(TODAY_ISO, k), 8.0));
-const TONIGHT = NIGHTS[0];
-
-(function sleepCard() {
+let NIGHTS = [], TONIGHT = null;
+function drawSleep() {
+  NIGHTS = [planNight(TODAY_ISO, 8.3)];
+  for (let k = 1; k < 7; k++) NIGHTS.push(planNight(addDays(TODAY_ISO, k), 8.0));
+  TONIGHT = NIGHTS[0];
   const t = TONIGHT, first = t.first;
   const big = minutes => { const text = clockMin(minutes); return `${text.slice(0, -3)}<small>${text.slice(-2)}</small>`; };
-  const why = t.setByFirst ? `Set by <b>${first[2]}</b> at ${clock(first[0])}.`
-    : first ? `Near your usual wake-up time, which keeps your body clock steady. First up: <b>${first[2]}</b> at ${clock(first[0])}.`
+  const why = t.setByFirst ? `Set by <b>${esc(first[2])}</b> at ${clock(first[0])}.`
+    : first ? `Near your usual wake-up time, which keeps your body clock steady. First up: <b>${esc(first[2])}</b> at ${clock(first[0])}.`
     : "Nothing early tomorrow. Waking near your usual time keeps your body clock steady.";
   const left = `<div><div class="sl-pair">
       <div class="sl-time"><div class="k"><span class="icon">bedtime</span>In bed by</div><div class="big">${big(t.bed)}</div></div>
@@ -825,7 +918,7 @@ const TONIGHT = NIGHTS[0];
     const name = k === 0 ? "Tonight" : weekday(n.night);
     const a = at(n.bed), b = at(n.wake + 1440);
     const times = `${clockMin(n.bed)} → ${clockMin(n.wake)}`;
-    const marker = n.first ? `<i class="mark" style="left:${at(hours(n.first[0]) * 60 + 1440)}%" title="${n.first[2]} · ${clock(n.first[0])}"></i>` : "";
+    const marker = n.first ? `<i class="mark" style="left:${at(hours(n.first[0]) * 60 + 1440)}%" title="${esc(n.first[2])} · ${clock(n.first[0])}"></i>` : "";
     return `<div class="sl-row${k === 0 ? " is-tonight" : ""}"><div class="d">${name}</div>
       <div class="track"><div class="bar" style="left:${a}%;width:${b - a}%" title="${name}: ${times}"></div>${marker}</div>
       <div class="tm">${times}</div></div>`;
@@ -833,12 +926,12 @@ const TONIGHT = NIGHTS[0];
   document.getElementById("sleep").innerHTML = left +
     `<div class="sl-week"><div class="sl-row sl-head"><div class="d"></div><div class="track sl-axis">${axis}</div><div class="tm"></div></div>${rows}
      <div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Time in bed</span><span><i class="ev-key"></i>First thing the next morning</span></div></div>`;
-})();
+}
 
 // =====================================================================================
 // Today: ring, tiles, the coach's decision, its steps, and today's calendar
 // =====================================================================================
-(function today() {
+(function ringAndTiles() {
   const r = TODAY.recovery, radius = 50, around = 2 * Math.PI * radius;
   const ring = svg("svg", { viewBox: "0 0 120 120", role: "img", "aria-label": `Recovery ${r}%` });
   ring.append(
@@ -877,54 +970,54 @@ const TONIGHT = NIGHTS[0];
     tile.append(spark);
     holder.append(tile);
   }
-
-  // The coach's explanation quotes Clive's numbers against HIS normal, and his calendar.
-  document.getElementById("why").textContent =
-    `Recovery is ${r}% (green), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ` +
-    `${HRV_TREND.low}–${HRV_TREND.high}. You slept ${TODAY.sleep} of the ${TODAY.need} hours you needed. Club tennis at 4:00 adds ` +
-    `load and your CHM 111 midterm is tomorrow at 10, so keep this short and easy, before your 9:30 class while it's 56°F and dry. ` +
-    `Tonight, be in bed by ${clockMin(TONIGHT.bed)}.`;
 })();
 
-const PLAN_STEPS = [
-  ["sync", null, "Downloaded the latest WHOOP data (14 days)."],
-  ["psychology", null, "Recovery is green and HRV is in Clive's normal range, but tennis at 4 PM adds load and the midterm is tomorrow. A short, easy run in the morning fits best.", "thought"],
-  ["monitor_heart", "get_whoop_recovery", `latest recovery ${TODAY.recovery}%, HRV ${TODAY.hrv} ms`],
-  ["bedtime", "get_whoop_sleep", `last night ${TODAY.sleep} h asleep, ${TODAY.need} h needed`],
-  ["local_fire_department", "get_whoop_strain", `yesterday's strain ${YESTERDAY.strain}`],
-  ["directions_run", "get_whoop_workouts", "2.0 running miles this week (7.0 last week)"],
-  ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
-  ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`],
-  ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
-  ["event", "get_calendar_events", "6 events today, free 6:00–9:15 AM; CHM 111 midterm tomorrow"],
-  ["calendar_month", "get_training_plan", "14 days planned"],
-  ["history", "get_training_history", "Wednesday's run was moved (recovery 48%)"],
-  ["calendar_add_on", "create_calendar_event", "suggested 7:00 AM for 40 min, then Clive approved it"],
-  ["save", "save_daily_log", "saved today's decision"],
-  ["check_circle", null, "Decision: easy run, 2 miles at 7:00 AM.", "done"],
-];
 function stepsHtml(steps) {
   return steps.map(([icon, tool, text, kind]) => {
-    const body = tool ? `<code>${tool}</code> <span class="out">→ ${text}</span>` : text;
-    return `<div class="step ${kind || ""}"><span class="icon">${icon}</span><div>${body}</div></div>`;
+    const body = tool ? `<code>${esc(tool)}</code> <span class="out">→ ${esc(text)}</span>` : esc(text);
+    return `<div class="step ${kind || ""}"><span class="icon">${esc(icon)}</span><div>${body}</div></div>`;
   }).join("");
 }
-document.getElementById("steps").innerHTML = stepsHtml(PLAN_STEPS);
+const toolCount = steps => steps.filter(s => s[1]).length;
 
-(function agenda() {
-  const todays = EVENTS_BY_DATE[TODAY_ISO];
+let adjustedLabel = "Moved from Wednesday";
+function drawBadges() {
+  const coachToday = eventsOn(TODAY_ISO).find(e => e[3] === "coach");
+  const badges = [];
+  if (coachToday && coachToday[4] === "suggested") badges.push(["calendar_add_on", `Suggested ${clock(coachToday[0])} · waiting for your OK`, ""]);
+  else if (coachToday) badges.push(["event_available", "Added to Google Calendar", "on-cal"]);
+  if (adjustedLabel) badges.push(["edit_calendar", adjustedLabel, ""]);
+  document.getElementById("badges").innerHTML = badges.map(([icon, text, style]) =>
+    `<span class="badge ${style}"><span class="icon">${icon}</span>${esc(text)}</span>`).join("");
+}
+function showDecision(headline, when, why, steps, meta) {
+  document.getElementById("headline").textContent = headline;
+  document.getElementById("when-text").textContent = when;
+  document.getElementById("when").hidden = !when;
+  document.getElementById("why").textContent = why;
+  document.getElementById("steps").innerHTML = stepsHtml(steps);
+  document.getElementById("steps-count").textContent = `· ${toolCount(steps)} tools`;
+  document.getElementById("plan-meta").textContent = meta;
+  drawBadges();
+}
+
+function drawAgenda() {
+  const todays = eventsOn(TODAY_ISO).slice().sort((a, b) => hours(a[0]) - hours(b[0]));
   document.getElementById("agenda-count").textContent = `${todays.length} events`;
-  document.getElementById("agenda").innerHTML = todays.map(([start, end, title, kind]) => {
-    const name = kind === "coach" ? `<span class="icon fill">directions_run</span>${title}` : title;
-    return `<li><div class="t">${clock(start)}</div><div class="e" style="border-color:${KIND_COLORS[kind]}">` +
-      `<b>${name}</b><span class="when2">${clockRange(start, end)} · ${CALENDAR_NAMES[kind]}</span></div></li>`;
+  document.getElementById("agenda").innerHTML = todays.map(([start, end, title, kind, tag]) => {
+    const name = kind === "coach" ? `<span class="icon fill">directions_run</span>${esc(title)}` : esc(title);
+    const note = tag === "suggested" ? "Suggested · waiting for your OK" : CALENDAR_NAMES[kind];
+    return `<li class="${tag === "suggested" ? "suggested" : ""}"><div class="t">${clock(start)}</div><div class="e" style="border-color:${KIND_COLORS[kind]}">` +
+      `<b>${name}</b><span class="when2">${clockRange(start, end)} · ${note}</span></div></li>`;
   }).join("");
-})();
+}
 
 // =====================================================================================
 // The week calendar (Last week / This week / Next week)
 // =====================================================================================
-function drawWeek(which) {
+let shownWeek = "this";
+function drawWeek(which = shownWeek) {
+  shownWeek = which;
   const week = WEEKS[which], px = 38;
   const timed = week.days.flatMap(d => d.events);
   const hasToday = week.days.some(d => d.date === TODAY_ISO);
@@ -950,16 +1043,16 @@ function drawWeek(which) {
     const moving = ["directions_run", "pedal_bike"].includes(icon) ? " move" : "";
     head.append(html("div", isToday ? "is-today" : "",
       `<div class="dow">${isToday ? "Today" : weekday(d.date)}</div><div class="num">${toDate(d.date).getUTCDate()}</div>` +
-      `<div class="plan-chip${moving}"><span class="icon">${icon}</span>${text}` +
+      `<div class="plan-chip${moving}" title="${esc(d.workout)}"><span class="icon">${icon}</span>${esc(text)}` +
       `${done ? ' <span class="icon ok" title="Done">check_circle</span>' : ""}</div>`));
     allDay.append(html("div", isToday ? "is-today" : "",
-      (d.allDay || []).map(([title, kind]) => `<div class="chip ${kind}" title="${title}">${title}</div>`).join("")));
+      (d.allDay || []).map(([title, kind]) => `<div class="chip ${kind}" title="${esc(title)}">${esc(title)}</div>`).join("")));
     const col = html("div", `day-col${isToday ? " is-today" : ""}`); col.style.height = `${(last - first) * px}px`;
     for (let h = first + 1; h < last; h++) {
       const line = html("div", "hour-line"); line.style.top = `${(h - first) * px}px`; col.append(line);
     }
     for (const [start, end, title, kind, tag] of d.events) {
-      const ev = html("div", `ev ${kind}${tag ? " " + tag : ""}`, `<b>${title}</b><span>${clock(start)}</span>`);
+      const ev = html("div", `ev ${kind}${tag ? " " + tag : ""}`, `<b>${esc(title)}</b><span>${clock(start)}</span>`);
       ev.style.top = `${(hours(start) - first) * px + 1}px`;
       ev.style.height = `${Math.max((hours(end) - hours(start)) * px - 3, 20)}px`;
       ev.title = `${title} · ${clockRange(start, end)} · ${tag === "suggested" ? "suggested, waiting for your OK" : CALENDAR_NAMES[kind]}`;
@@ -970,8 +1063,7 @@ function drawWeek(which) {
     }
     body.append(col);
   }
-  const cal = document.getElementById("cal");
-  cal.replaceChildren(head, ...(week.days.some(d => d.allDay) ? [allDay] : []), body);
+  document.getElementById("cal").replaceChildren(head, ...(week.days.some(d => d.allDay) ? [allDay] : []), body);
 
   const legend = [
     `<span><i class="swatch" style="background:var(--s1)"></i>WFU Classes</span>`,
@@ -1079,12 +1171,21 @@ function sleepChart(rows) {
 // Running miles per week: done (solid) and planned by the coach (dashed outline) for this week and next.
 const WEEKLY_MILES = [["Jul 27", 3.0], ["Aug 3", 3.0], ["Aug 10", 3.5], ["Aug 17", 3.5], ["Aug 24", 4.0], ["Aug 31", 4.0],
   ["Sep 7", 4.0], ["Sep 14", 4.5], ["Sep 21", 5.0], ["Sep 28", 6.0], ["Oct 5", 7.0]];
-function milesChart(count) {
+const MILES_RE = /(\d+(?:\.\d+)?)\s*(?:mi\b|miles?)/i;
+// Planned running miles in a week, from the plan in words (rest, tennis, and bike days are 0).
+const plannedMiles = week => round(WEEKS[week].days.reduce((sum, d) => {
+  const t = d.workout.toLowerCase();
+  return sum + (!t.includes("rest") && /run|walk/.test(t) && MILES_RE.test(t) ? Number(t.match(MILES_RE)[1]) : 0);
+}, 0), 1);
+let rangeDays = 30;
+function milesChart(count = rangeDays) {
   const el = document.getElementById("miles-chart");
   const weeks = Math.max(4, Math.floor(count / 7));
   const data = WEEKLY_MILES.slice(-(weeks - 1)).map(([w, m]) => ({ week: w, done: m, planned: 0, when: "past" }))
-    .concat([{ week: "Oct 12", done: 2.0, planned: 7.5, when: "now" }, { week: "Oct 19", done: 0, planned: 8.0, when: "next" }]);
-  const y = frame(el, 0, 10, [0, 2, 4, 6, 8, 10]);
+    .concat([{ week: "Oct 12", done: 2.0, planned: plannedMiles("this"), when: "now" }, { week: "Oct 19", done: 0, planned: plannedMiles("next"), when: "next" }]);
+  const top = Math.max(10, Math.ceil(Math.max(...data.map(d => Math.max(d.done, d.planned))) / 2) * 2 + 2);
+  const ticks = []; for (let t = 0; t <= top; t += 2) ticks.push(t);
+  const y = frame(el, 0, top, ticks);
   const slot = plotW / data.length, w = Math.min(26, slot * 0.6);
   data.forEach((d, i) => {
     const cx = M.l + slot * i + slot / 2;
@@ -1103,6 +1204,7 @@ function milesChart(count) {
     }
     if (data.length <= 8 || i % 2 === (data.length - 1) % 2) el.append(svg("text", { x: cx, y: H - 6, "text-anchor": "middle" }, d.week));
   });
+  document.getElementById("run-note").innerHTML = `<b>2 of ${plannedMiles("this")} miles</b> done this week · 7 last week`;
 }
 
 function bedtimeChart(rows) {
@@ -1136,7 +1238,7 @@ function strainChart(rows) {
 // =====================================================================================
 // Insights: the same findings the real app looks for (charts.insights), over the range you pick
 // =====================================================================================
-function insights(rows) {
+function findInsights(rows) {
   const found = [], mean = list => list.reduce((a, b) => a + b, 0) / list.length;
   const long = rows.filter(d => d.sleep >= 7).map(d => d.recovery), shortN = rows.filter(d => d.sleep < 7).map(d => d.recovery);
   if (long.length >= 3 && shortN.length >= 3) found.push(["bedtime", "Sleep", `${Math.round(mean(long))}% vs ${Math.round(mean(shortN))}%`,
@@ -1158,7 +1260,11 @@ function insights(rows) {
       `Your HRV this week compared with before. ${change >= 3 ? "Rising, a sign you're adapting well." : change <= -3 ? "Dipping, so recovery matters this week." : "Holding steady."}`,
       `${Math.round(recent)} vs ${Math.round(before)} ms`]);
   }
-  document.getElementById("insights").innerHTML = found.slice(0, 4).map(([icon, title, big, text, count]) =>
+  return found;
+}
+const PATTERNS = findInsights(DAYS).map(([, finding, result, meaning, based_on]) => ({ finding, result, meaning, based_on }));
+function insights(rows) {
+  document.getElementById("insights").innerHTML = findInsights(rows).slice(0, 4).map(([icon, title, big, text, count]) =>
     `<div class="card insight"><div class="k"><span class="icon">${icon}</span>${title}</div><div class="big">${big}</div>` +
     `<p>${text}</p><div class="count">${count}</div></div>`).join("");
 }
@@ -1170,7 +1276,8 @@ function table(rows) {
       `<td>${d.rhr}</td><td>${d.sleep}</td><td>${d.need}</td><td>${d.strain}</td></tr>`).join("") + "</tbody>";
 }
 
-function drawTrends(count) {
+function drawTrends(count = rangeDays) {
+  rangeDays = count;
   const rows = DAYS.slice(-count);
   document.getElementById("trends-label").innerHTML = `<span class="icon">insights</span>Trends · last ${count} days`;
   recoveryChart(rows);
@@ -1185,7 +1292,23 @@ function drawTrends(count) {
 }
 
 // =====================================================================================
-// Ask the coach: a saved sample conversation
+// Coaching profile (the goal and notes can change in a chat)
+// =====================================================================================
+function drawProfile() {
+  document.getElementById("p-goal").textContent = PROFILE.goal;
+  document.getElementById("p-goal-date").textContent = PROFILE.goal_date ? longDate(PROFILE.goal_date) : "No date";
+  document.getElementById("notes").innerHTML = NOTES.map(n =>
+    `<li><span class="when3">${esc(n.when)}</span>${esc(n.text)}</li>`).join("");
+  let sub = `Goal: ${PROFILE.goal}`;
+  if (PROFILE.goal_date) {
+    const weeks = Math.floor((toDate(PROFILE.goal_date) - toDate(TODAY_ISO)) / (7 * 86400000));
+    sub += ` · ${short(PROFILE.goal_date)}${weeks >= 2 ? ` (${weeks} weeks away)` : ""}`;
+  }
+  document.getElementById("goal-sub").textContent = sub;
+}
+
+// =====================================================================================
+// Ask the coach: a saved sample conversation, then the live coach
 // =====================================================================================
 const CHAT = [
   { day: "Monday, October 12" },
@@ -1214,7 +1337,17 @@ const CHAT = [
             ["edit_calendar", "update_training_plan", "wrote 2 days of the plan"]] },
   { day: "Today" },
   { you: "Can I still play tennis tonight?", time: "6:50 AM" },
-  { coach: `<p>Yes, play. Your recovery is ${TODAY.recovery}% and your 7-day HRV is ${HRV_TREND.status} your normal range, so one
+];
+function coachBubble(body) {
+  return `<div class="msg coach"><div class="who"><span class="icon fill">directions_run</span></div><div class="body">${body}</div></div>`;
+}
+function stepsDetails(steps) {
+  const count = toolCount(steps);
+  return count ? `<details class="steps"><summary><span class="icon">account_tree</span>Looked at ${count} thing${count === 1 ? "" : "s"}` +
+    `<span class="icon chev">expand_more</span></summary>${stepsHtml(steps)}</details>` : "";
+}
+function drawSampleChat() {
+  const tennis = { coach: `<p>Yes, play. Your recovery is ${TODAY.recovery}% and your 7-day HRV is ${HRV_TREND.status} your normal range, so one
       session is fine on top of this morning's easy 2 miles.</p>
       <p>Two things, since your CHM 111 midterm is tomorrow at 10:00:</p>
       <ul><li>Keep it to practice, not a long match. Your recovery the morning after hard days is usually lower.</li>
@@ -1222,20 +1355,203 @@ const CHAT = [
     steps: [["monitor_heart", "get_whoop_recovery", `latest recovery ${TODAY.recovery}%, HRV ${TODAY.hrv} ms`],
             ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
             ["event", "get_calendar_events", "next 2 days: club tennis 4:00 PM today, CHM 111 midterm 10:00 AM tomorrow"],
-            ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`]] },
+            ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`]] };
+  document.getElementById("chat").innerHTML = CHAT.concat([tennis]).map(m => {
+    if (m.day) return `<div class="day-break">${m.day}</div>`;
+    if (m.you) return `<div class="msg you"><div class="who"><span class="icon">person</span></div>` +
+      `<div><div class="time">${m.time}</div><div class="body">${esc(m.you)}</div></div></div>`;
+    return coachBubble(m.coach + stepsDetails(m.steps));
+  }).join("");
+}
+
+// Turn the coach's plain text into HTML: paragraphs, "- " lists, and **bold**.
+function formatAnswer(text) {
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  let out = "", list = [];
+  const flush = () => { if (list.length) { out += `<ul>${list.map(i => `<li>${inline(i)}</li>`).join("")}</ul>`; list = []; } };
+  for (const line of text.split("\n")) {
+    const item = line.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)$/);
+    if (item) list.push(item[1]);
+    else { flush(); if (line.trim()) out += `<p>${inline(line.trim())}</p>`; }
+  }
+  flush();
+  return out;
+}
+
+// ---------- Talking to the live coach (api/chat.py on Vercel) ----------
+// The page sends the sample data as it looks right now, so the coach sees any changes from this visit.
+function snapshot() {
+  const month = DAYS.slice(-31, -1);
+  return {
+    today: TODAY_ISO, now: "06:45", today_text: "Thursday, October 15, 2026",
+    profile: { ...PROFILE }, notes: NOTES.map(n => `${n.when}: ${n.text}`),
+    days: DAYS.slice(-14).map(d => ({ date: d.date, recovery: d.recovery, hrv: d.hrv, rhr: d.rhr, sleep: d.sleep, need: d.need,
+      deep: d.deep, rem: d.rem, light: d.light, awake: d.awake, strain: d.strain,
+      bedtime: clockMin((d.bed + 18) * 60), wake_time: clockMin((d.wake + 18) * 60) })),
+    normal_30_day: { recovery_score: Math.round(avg(month, "recovery")), hrv_ms: round(avg(month, "hrv"), 1), resting_hr: round(avg(month, "rhr"), 1) },
+    patterns: {
+      hrv: { last_7_day_average: HRV_TREND.average, his_normal_range: [HRV_TREND.low, HRV_TREND.high], status: `${HRV_TREND.status} his normal range` },
+      resting_heart_rate: { last_7_day_average: RHR_TREND.average, his_normal_range: [RHR_TREND.low, RHR_TREND.high], status: `${RHR_TREND.status} his normal range` },
+      sleep: { usual_bedtime: clockMin(USUAL_BED), usual_wake_time: clockMin(USUAL_WAKE), average_sleep_last_7_nights: round(avg(DAYS.slice(-7), "sleep"), 1),
+               usual_sleep_need_hours: 8.0, sleep_efficiency_percent: Math.round(EFFICIENCY * 100) },
+      training_load: { running_miles_this_week_so_far: 2.0, running_miles_last_week: 7.0, average_weekly_running_miles_4_weeks_before: 5.4,
+                       share_of_workout_time_easy_percent: 74, other_sports: ["Club tennis, Tuesdays and Thursdays"] },
+      patterns_in_his_data: PATTERNS,
+    },
+    nights: NIGHTS.map(n => ({ night: `${weekday(n.night)} ${short(n.night)} night → wake up ${weekday(addDays(n.night, 1))} ${short(addDays(n.night, 1))}`,
+      bedtime: clockMin(n.bed), wake_up: clockMin(n.wake),
+      sleep_need_hours: n.need, minutes_in_bed: n.inBed, first_thing_next_morning: n.first ? `${n.first[2]} at ${clock(n.first[0])}` : null,
+      no_caffeine_after: clockMin(n.caffeine) })),
+    weather: WEATHER, workouts: WORKOUT_LOG,
+    calendar: ALL_DAYS.map(d => ({ date: d.date, workout: d.workout, done: d.plan[2], all_day: (d.allDay || []).map(a => a[0]),
+      events: d.events.map(([start, end, title, calendar, tag]) => ({ start, end, title, calendar, tag: tag || null })) })),
+  };
+}
+async function askCoach(payload) {
+  let response;
+  try {
+    response = await fetch("api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ ...payload, data: snapshot() }) });
+  } catch {
+    throw new Error("Couldn't reach the coach. Check your internet connection and try again.");
+  }
+  let body = {};
+  try { body = await response.json(); } catch { /* not JSON */ }
+  if (!response.ok) throw new Error(body.error || "The coach couldn't answer just now. Try again in a minute.");
+  return body;
+}
+
+// The coach's changes, shown on the page until it's reloaded. Returns short labels for what changed.
+function applyChanges(changes = {}) {
+  const labels = [];
+  const planned = Object.entries(changes.plan || {}).filter(([date, text]) => dayOf(date) && dayOf(date).workout !== text);
+  for (const [date, text] of planned) {
+    const d = dayOf(date);
+    d.workout = text;
+    d.plan = chipFor(text);
+    d.events = d.events.filter(e => e[3] !== "coach");  // the old workout time no longer fits
+  }
+  if (planned.length) labels.push(`Plan changed: ${planned.map(([date]) => weekday(date)).join(", ")}`);
+  if (changes.suggested && dayOf(changes.suggested.date)) {
+    const s = changes.suggested;
+    ALL_DAYS.forEach(d => { d.events = d.events.filter(e => e[4] !== "suggested" && !(d.date === s.date && e[3] === "coach")); });
+    dayOf(s.date).events.push(RUN(s.start, s.end, s.title, "suggested"));
+    labels.push(`Suggested ${weekday(s.date)} ${clock(s.start)}`);
+  }
+  if (changes.today && changes.today.workout) {
+    dayOf(TODAY_ISO).plan = chipFor(changes.today.workout);
+    if (chipFor(changes.today.workout)[1] !== chipFor(WORKOUTS[TODAY_ISO])[1]) adjustedLabel = "Adjusted by the coach";
+  }
+  for (const note of changes.notes || []) { NOTES.push({ when: short(TODAY_ISO), text: note }); labels.push("Saved a note"); }
+  if (changes.goal && changes.goal.goal) {
+    PROFILE.goal = changes.goal.goal;
+    PROFILE.goal_date = /^\d{4}-\d{2}-\d{2}$/.test(changes.goal.goal_date || "") ? changes.goal.goal_date : null;
+    labels.push("New goal");
+  }
+  drawWeek(); drawAgenda(); drawSleep(); drawProfile(); milesChart(); drawBadges();
+  return labels;
+}
+
+let coachReady = false, busy = false;
+const LIVE = [];  // this visit's conversation, so the coach remembers what was just said
+const SUGGESTIONS = [
+  ["sports_tennis", "Should I play tennis tonight or rest?"],
+  ["swap_horiz", "Move Saturday's long run to Sunday"],
+  ["bedtime", "How has my sleep been this week?"],
+  ["flag", "Plan my next two weeks for the 10K"],
 ];
-document.getElementById("chat").innerHTML = CHAT.map(m => {
-  if (m.day) return `<div class="day-break">${m.day}</div>`;
-  if (m.you) return `<div class="msg you"><div class="who"><span class="icon">person</span></div>` +
-    `<div><div class="time">${m.time}</div><div class="body">${m.you}</div></div></div>`;
-  return `<div class="msg coach"><div class="who"><span class="icon fill">directions_run</span></div><div class="body">${m.coach}` +
-    `<details class="steps"><summary><span class="icon">account_tree</span>Looked at ${m.steps.length} things<span class="icon chev">expand_more</span></summary>` +
-    `${stepsHtml(m.steps)}</details></div></div>`;
-}).join("");
+
+async function sendMessage(text) {
+  text = text.trim();
+  const box = document.getElementById("message");
+  if (!text || busy) return;
+  if (!coachReady) { showOffline(); return; }
+  busy = true; box.value = ""; sizeBox(); updateSend();
+  const live = document.getElementById("live");
+  live.insertAdjacentHTML("beforeend", `<div class="msg you"><div class="who"><span class="icon">person</span></div>` +
+    `<div><div class="time">Just now</div><div class="body">${esc(text)}</div></div></div>`);
+  const answer = html("div", "", coachBubble(`<span class="typing"><i></i><i></i><i></i> Looking at Clive's data</span>`)).firstChild;
+  live.append(answer);
+  answer.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  try {
+    const reply = await askCoach({ mode: "chat", message: text, earlier: LIVE.slice(-6) });
+    LIVE.push({ asked: text, answered: reply.answer });
+    const labels = applyChanges(reply.changes);
+    const chips = labels.length ? `<div class="changed">${labels.map(l => `<a href="#${l === "New goal" || l === "Saved a note" ? "profile" : "home"}">${esc(l)}</a>`).join("")}</div>` : "";
+    answer.querySelector(".body").innerHTML = formatAnswer(reply.answer) + chips + stepsDetails(reply.steps);
+  } catch (error) {
+    answer.querySelector(".body").innerHTML = `<p class="err">${esc(error.message)}</p>`;
+  } finally {
+    busy = false; updateSend();
+  }
+}
+
+async function planMyDay() {
+  const button = document.getElementById("plan-btn"), note = document.getElementById("plan-note");
+  if (busy) return;
+  if (!coachReady) { note.textContent = "The live coach is switched off right now, so this shows the saved plan."; return; }
+  busy = true; button.disabled = true;
+  const why = document.getElementById("why"), before = why.textContent;
+  button.innerHTML = `<span class="icon">progress_activity</span>The coach is working…`;
+  why.innerHTML = `<span class="typing"><i></i><i></i><i></i> Reading Clive's WHOOP data, calendar, and the weather</span>`;
+  try {
+    const reply = await askCoach({ mode: "plan" });
+    const labels = applyChanges(reply.changes);
+    const lines = reply.answer.split("\n").filter(l => l.trim());
+    const decided = reply.changes.today ? reply.changes.today.workout : lines[0];
+    const [headline, when] = splitWorkout(decided || lines[0]);
+    const rest = lines.slice(1).join(" ").replace(/\*\*/g, "").trim();
+    showDecision(headline, when, rest || (reply.changes.today && reply.changes.today.reason) || lines[0],
+                 reply.steps, `Planned just now · ${toolCount(reply.steps)} tools · claude-haiku-5-5`);
+    note.textContent = labels.length ? `The coach changed the demo: ${labels.join(" · ")}. Reload to reset.` : "Planned live on the sample data. Reload to reset.";
+  } catch (error) {
+    why.textContent = before;
+    note.innerHTML = `<span class="err">${esc(error.message)}</span>`;
+  } finally {
+    busy = false; button.disabled = false;
+    button.innerHTML = `<span class="icon">auto_awesome</span>Plan my day`;
+  }
+}
+
+function sizeBox() { const box = document.getElementById("message"); box.style.height = "auto"; box.style.height = `${box.scrollHeight}px`; }
+function updateSend() { document.getElementById("send").disabled = busy || !document.getElementById("message").value.trim(); }
+function showOffline() {
+  document.getElementById("live-label").textContent = "The live coach is switched off right now";
+  document.getElementById("suggest").hidden = true;
+  document.getElementById("composer").hidden = true;
+  document.getElementById("live-fine").textContent = "The saved conversation above shows what it can do.";
+  document.querySelector(".live-dot").style.background = "var(--muted)";
+}
 
 // =====================================================================================
-// Switches and pages
+// Start: draw everything, wire up the switches, and check whether the live coach is on
 // =====================================================================================
+drawSleep();
+showDecision("Easy run", "7:00–7:40 AM · 2 miles",
+  `Recovery is ${TODAY.recovery}% (green), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ` +
+  `${HRV_TREND.low}–${HRV_TREND.high}. You slept ${TODAY.sleep} of the ${TODAY.need} hours you needed. Club tennis at 4:00 adds ` +
+  `load and your CHM 111 midterm is tomorrow at 10, so keep this short and easy, before your 9:30 class while it's 56°F and dry. ` +
+  `Tonight, be in bed by ${clockMin(TONIGHT.bed)}.`,
+  [["sync", null, "Downloaded the latest WHOOP data (14 days)."],
+   ["psychology", null, "Recovery is green and HRV is in Clive's normal range, but tennis at 4 PM adds load and the midterm is tomorrow. A short, easy run in the morning fits best.", "thought"],
+   ["monitor_heart", "get_whoop_recovery", `latest recovery ${TODAY.recovery}%, HRV ${TODAY.hrv} ms`],
+   ["bedtime", "get_whoop_sleep", `last night ${TODAY.sleep} h asleep, ${TODAY.need} h needed`],
+   ["local_fire_department", "get_whoop_strain", `yesterday's strain ${YESTERDAY.strain}`],
+   ["directions_run", "get_whoop_workouts", "2.0 running miles this week (7.0 last week)"],
+   ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
+   ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`],
+   ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
+   ["event", "get_calendar_events", "6 events today, free 6:00–9:15 AM; CHM 111 midterm tomorrow"],
+   ["calendar_month", "get_training_plan", "14 days planned"],
+   ["history", "get_training_history", "Wednesday's run was moved (recovery 48%)"],
+   ["calendar_add_on", "create_calendar_event", "suggested 7:00 AM for 40 min, then Clive approved it"],
+   ["save", "save_daily_log", "saved today's decision"],
+   ["check_circle", null, "Decision: easy run, 2 miles at 7:00 AM.", "done"]],
+  "Planned 6:42 AM · 12 tools · claude-haiku-5-5");
+drawAgenda();
+drawProfile();
+drawSampleChat();
+
 function wire(groupId, key, draw) {
   const group = document.getElementById(groupId);
   group.addEventListener("click", event => {
@@ -1249,6 +1565,21 @@ wire("week-seg", "week", drawWeek);
 wire("range-seg", "range", value => drawTrends(Number(value)));
 drawWeek("this");
 drawTrends(30);
+
+document.getElementById("plan-btn").addEventListener("click", planMyDay);
+document.getElementById("suggest").innerHTML = SUGGESTIONS.map(([icon, text]) =>
+  `<button type="button" data-text="${esc(text)}"><span class="icon">${icon}</span>${esc(text)}</button>`).join("");
+document.getElementById("suggest").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (button) sendMessage(button.dataset.text);
+});
+document.getElementById("composer").addEventListener("submit", event => { event.preventDefault(); sendMessage(document.getElementById("message").value); });
+document.getElementById("message").addEventListener("input", () => { sizeBox(); updateSend(); });
+document.getElementById("message").addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(event.target.value); }
+});
+fetch("api/chat").then(r => r.json()).then(status => { coachReady = !!status.ready; if (!coachReady) showOffline(); })
+  .catch(() => showOffline());
 
 function showPage() {
   const page = (location.hash || "#home").slice(1);
