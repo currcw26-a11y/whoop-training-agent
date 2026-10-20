@@ -443,8 +443,8 @@ footer p { margin: 0; max-width: 640px; }
 <div class="page" id="page-home">
   <div class="greeting">
     <div>
-      <div class="date"><span class="icon">today</span>Thursday, October 15</div>
-      <h1>Good morning, Clive</h1>
+      <div class="date" id="today-label"></div>
+      <h1 id="greeting"></h1>
     </div>
     <div class="weather" title="Forecast from Open-Meteo">
       <span class="icon fill">sunny</span><b>54–76°F</b><span class="muted">Sunny · 0% rain<span class="where"> · Winston-Salem</span></span>
@@ -571,9 +571,29 @@ footer p { margin: 0; max-width: 640px; }
           <svg class="chart" id="bed-chart" viewBox="0 0 520 210" role="img" aria-label="Chart of when you fell asleep and woke up each night"></svg>
         </div>
         <div class="mini">
+          <h3>How hard you trained</h3>
+          <p class="sub">Minutes in easy, moderate, and hard heart-rate zones each week.</p>
+          <div class="legend chart-legend">
+            <span><i class="swatch" style="background:#86b6ef"></i>Easy (zones 1-2)</span>
+            <span><i class="swatch" style="background:#2a78d6"></i>Moderate (zone 3)</span>
+            <span><i class="swatch" style="background:#184f95"></i>Hard (zones 4-5)</span>
+          </div>
+          <svg class="chart" id="effort-chart" viewBox="0 0 520 210" role="img" aria-label="Stacked bar chart of training minutes by effort each week"></svg>
+        </div>
+        <div class="mini">
           <h3>Day strain</h3>
           <p class="sub">How hard each whole day was on your body (0–21).</p>
           <svg class="chart" id="strain-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of daily WHOOP strain"></svg>
+        </div>
+        <div class="mini">
+          <h3>Sleep vs. next-morning recovery</h3>
+          <p class="sub">Each dot is one morning. The gray line is the trend.</p>
+          <svg class="chart" id="scatter-chart" viewBox="0 0 520 210" role="img" aria-label="Scatter plot of hours asleep against recovery"></svg>
+        </div>
+        <div class="mini">
+          <h3>Your best day of the week</h3>
+          <p class="sub">Average recovery for each weekday.</p>
+          <svg class="chart" id="weekday-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of average recovery by weekday"></svg>
         </div>
       </div>
     </details>
@@ -670,10 +690,16 @@ footer p { margin: 0; max-width: 640px; }
 
 <script>
 // =====================================================================================
-// Sample data (all made up). "Now" is Thursday, October 15, 2026 at 6:45 AM.
+// Sample data (all made up). "Today" is the real date and time on the computer viewing the
+// page, and Clive's week follows a repeating schedule, so the demo is current any day.
 // =====================================================================================
-const NOW_HOUR = 6.75;
-// The last 30 days of WHOOP-style numbers, oldest first. The last one is "today".
+const pad = n => String(n).padStart(2, "0");
+// For testing, ?date=YYYY-MM-DD in the address pretends it's another day (same time of day).
+const realNow = new Date(), pretend = new URLSearchParams(location.search).get("date") || "";
+const NOW = /^\d{4}-\d{2}-\d{2}$/.test(pretend) ? new Date(`${pretend}T${pad(realNow.getHours())}:${pad(realNow.getMinutes())}:00`) : realNow;
+const NOW_HOUR = NOW.getHours() + NOW.getMinutes() / 60;
+const NOW_HHMM = `${pad(NOW.getHours())}:${pad(NOW.getMinutes())}`;
+// 30 days of WHOOP-style numbers, oldest first. Their dates are set below, so the last one is always today.
 const LAST_30 = [{"date":"2026-09-16","recovery":53,"sleep":7.1,"hrv":66,"rhr":55,"need":7.6,"deep":1.57,"rem":1.75,"light":3.78,"awake":0.37,"strain":7.8},{"date":"2026-09-17","recovery":64,"sleep":7.1,"hrv":68,"rhr":54,"need":8.0,"deep":1.61,"rem":1.79,"light":3.7,"awake":0.55,"strain":8.5},{"date":"2026-09-18","recovery":43,"sleep":7.1,"hrv":57,"rhr":55,"need":8.2,"deep":1.32,"rem":1.53,"light":4.25,"awake":0.36,"strain":10.5},{"date":"2026-09-19","recovery":54,"sleep":7.4,"hrv":62,"rhr":56,"need":8.2,"deep":1.36,"rem":1.92,"light":4.12,"awake":0.36,"strain":10.1},{"date":"2026-09-20","recovery":58,"sleep":7.0,"hrv":64,"rhr":55,"need":8.3,"deep":1.52,"rem":1.58,"light":3.9,"awake":0.58,"strain":6.5},{"date":"2026-09-21","recovery":74,"sleep":7.4,"hrv":61,"rhr":56,"need":7.3,"deep":1.64,"rem":1.49,"light":4.27,"awake":0.38,"strain":11.8},{"date":"2026-09-22","recovery":74,"sleep":7.7,"hrv":67,"rhr":52,"need":8.0,"deep":1.36,"rem":1.74,"light":4.6,"awake":0.66,"strain":9.6},{"date":"2026-09-23","recovery":48,"sleep":6.7,"hrv":66,"rhr":55,"need":8.0,"deep":1.21,"rem":1.71,"light":3.78,"awake":0.63,"strain":13.0},{"date":"2026-09-24","recovery":71,"sleep":7.4,"hrv":66,"rhr":55,"need":7.9,"deep":1.6,"rem":1.72,"light":4.08,"awake":0.4,"strain":12.2},{"date":"2026-09-25","recovery":60,"sleep":7.2,"hrv":64,"rhr":55,"need":8.0,"deep":1.63,"rem":1.82,"light":3.75,"awake":0.48,"strain":12.7},{"date":"2026-09-26","recovery":53,"sleep":7.6,"hrv":61,"rhr":56,"need":8.4,"deep":1.33,"rem":1.74,"light":4.53,"awake":0.2,"strain":6.6},{"date":"2026-09-27","recovery":61,"sleep":7.0,"hrv":64,"rhr":53,"need":8.2,"deep":1.42,"rem":1.51,"light":4.07,"awake":0.57,"strain":13.0},{"date":"2026-09-28","recovery":66,"sleep":7.8,"hrv":64,"rhr":54,"need":7.6,"deep":1.42,"rem":1.71,"light":4.67,"awake":0.39,"strain":14.0},{"date":"2026-09-29","recovery":70,"sleep":7.5,"hrv":65,"rhr":53,"need":7.9,"deep":1.38,"rem":1.65,"light":4.47,"awake":0.44,"strain":10.7},{"date":"2026-09-30","recovery":56,"sleep":7.7,"hrv":63,"rhr":56,"need":8.3,"deep":1.41,"rem":1.96,"light":4.33,"awake":0.54,"strain":12.9},{"date":"2026-10-01","recovery":50,"sleep":7.6,"hrv":62,"rhr":56,"need":7.9,"deep":1.35,"rem":1.95,"light":4.3,"awake":0.36,"strain":10.6},{"date":"2026-10-02","recovery":28,"sleep":5.4,"hrv":48,"rhr":58,"need":8.1,"deep":0.95,"rem":1.22,"light":3.23,"awake":0.36,"strain":9.4},{"date":"2026-10-03","recovery":50,"sleep":6.6,"hrv":56,"rhr":56,"need":7.7,"deep":1.16,"rem":1.48,"light":3.96,"awake":0.07,"strain":8.7},{"date":"2026-10-04","recovery":51,"sleep":7.7,"hrv":62,"rhr":55,"need":8.1,"deep":1.5,"rem":1.67,"light":4.53,"awake":0.6,"strain":8.0},{"date":"2026-10-05","recovery":55,"sleep":7.8,"hrv":65,"rhr":55,"need":8.2,"deep":1.35,"rem":2.03,"light":4.42,"awake":0.3,"strain":12.7},{"date":"2026-10-06","recovery":56,"sleep":7.1,"hrv":69,"rhr":55,"need":8.1,"deep":1.41,"rem":1.51,"light":4.18,"awake":0.38,"strain":9.2},{"date":"2026-10-07","recovery":63,"sleep":7.3,"hrv":68,"rhr":55,"need":8.2,"deep":1.58,"rem":1.66,"light":4.06,"awake":0.44,"strain":9.4},{"date":"2026-10-08","recovery":70,"sleep":7.6,"hrv":77,"rhr":53,"need":7.6,"deep":1.36,"rem":1.66,"light":4.58,"awake":0.37,"strain":13.7},{"date":"2026-10-09","recovery":70,"sleep":7.7,"hrv":64,"rhr":53,"need":8.0,"deep":1.58,"rem":1.77,"light":4.35,"awake":0.4,"strain":12.8},{"date":"2026-10-10","recovery":56,"sleep":6.8,"hrv":67,"rhr":57,"need":8.1,"deep":1.4,"rem":1.64,"light":3.76,"awake":0.5,"strain":7.9},{"date":"2026-10-11","recovery":62,"sleep":6.9,"hrv":69,"rhr":56,"need":8.0,"deep":1.43,"rem":1.55,"light":3.92,"awake":0.65,"strain":10.7},{"date":"2026-10-12","recovery":82,"sleep":7.0,"hrv":64,"rhr":52,"need":8.1,"deep":1.29,"rem":1.57,"light":4.14,"awake":0.68,"strain":11.4},{"date":"2026-10-13","recovery":64,"sleep":7.1,"hrv":64,"rhr":55,"need":8.0,"deep":1.4,"rem":1.85,"light":3.85,"awake":0.39,"strain":14.0},{"date":"2026-10-14","recovery":48,"sleep":6.2,"hrv":62,"rhr":56,"need":7.9,"deep":1.38,"rem":1.57,"light":3.25,"awake":0.8,"strain":9.0},{"date":"2026-10-15","recovery":72,"sleep":7.6,"hrv":68,"rhr":52,"need":8.1,"deep":1.74,"rem":1.82,"light":4.04,"awake":0.25,"strain":4.1}];
 
 // A tiny random-number generator with a fixed seed, so the "made up" days are the same every time.
@@ -690,7 +716,7 @@ const gauss = () => { let u = 0, v = 0; while (!u) u = rand(); while (!v) v = ra
 const round = (x, digits = 0) => Math.round(x * 10 ** digits) / 10 ** digits;
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
-// ---------- Dates (all in UTC, so the page looks the same in every time zone) ----------
+// ---------- Dates (all in UTC, so the math is the same in every time zone) ----------
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -700,7 +726,10 @@ const addDays = (iso, n) => { const t = toDate(iso); t.setUTCDate(t.getUTCDate()
 const short = iso => { const t = toDate(iso); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}`; };
 const longDate = iso => { const t = toDate(iso); return `${WEEKDAYS_LONG[t.getUTCDay()]}, ${MONTHS_LONG[t.getUTCMonth()]} ${t.getUTCDate()}, ${t.getUTCFullYear()}`; };
 const weekday = iso => WEEKDAYS[toDate(iso).getUTCDay()];
-const TODAY_ISO = "2026-10-15";
+const TODAY_ISO = `${NOW.getFullYear()}-${pad(NOW.getMonth() + 1)}-${pad(NOW.getDate())}`;
+const weekdayIndex = iso => (toDate(iso).getUTCDay() + 6) % 7;  // Monday 0 ... Sunday 6
+const THIS_MONDAY = addDays(TODAY_ISO, -weekdayIndex(TODAY_ISO));
+const daysFromToday = iso => Math.round((toDate(iso) - toDate(TODAY_ISO)) / 86400000);
 
 // 60 more days before those 30 (90 in all), generated with the same habits.
 const EARLIER = [];
@@ -709,14 +738,15 @@ for (let n = 60; n >= 1; n--) {
   const recovery = Math.round(clamp(57 + (sleep - 7.1) * 12 + 10 * gauss(), 22, 94));
   const awake = round(clamp(0.45 + 0.15 * gauss(), 0.1, 0.9), 2);
   EARLIER.push({
-    date: addDays("2026-09-16", -n), recovery, sleep,
+    recovery, sleep,
     hrv: Math.round(62 + (recovery - 57) * 0.22 + 3 * gauss()), rhr: Math.round(55.5 - (recovery - 57) * 0.04 + gauss()),
     need: round(clamp(8.0 + 0.25 * gauss(), 7.3, 8.6), 1),
     deep: round(sleep * 0.2, 2), rem: round(sleep * 0.24, 2), light: round(sleep * 0.56 - awake * 0.2, 2), awake,
     strain: rand() < 0.14 ? round(14 + 2.5 * rand(), 1) : round(6 + 7 * rand(), 1),
   });
 }
-const DAYS = EARLIER.concat(LAST_30);
+const DAYS = EARLIER.concat(LAST_30.map(({ date, ...values }) => values));
+DAYS.forEach((d, i) => { d.date = addDays(TODAY_ISO, i - (DAYS.length - 1)); });  // the last day is today
 // When each night started: hours after 6 PM (5.8 = 11:48 PM). Short nights tend to start late.
 DAYS.forEach(d => {
   d.bed = round(clamp(5.65 + (7.2 - d.sleep) * 0.35 + 0.35 * gauss(), 4.4, 7.4), 2);
@@ -737,27 +767,14 @@ function personalTrend(key) {
 const HRV_TREND = personalTrend("hrv"), RHR_TREND = personalTrend("rhr");
 
 // ---------- Clive's coaching profile and what the coach remembers ----------
-const PROFILE = { goal: "Run my first 10K", goal_date: "2026-12-06", experience: "2-3 miles, 3 times a week, plus club tennis",
+const GOAL_DATE = (() => { let d = addDays(TODAY_ISO, 49); while (weekdayIndex(d) !== 6) d = addDays(d, 1); return d; })();  // a Sunday ~7 weeks out
+const PROFILE = { goal: "Run my first 10K", goal_date: GOAL_DATE, experience: "2-3 miles, 3 times a week, plus club tennis",
                   run_times: "Early morning (6-9am), Afternoon (3-6pm)" };
 const NOTES = [
-  { when: "Oct 11", text: "Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now." },
-  { when: "Oct 12", text: "Plays club tennis Tuesdays and Thursdays, 4–5:30 PM." },
-  { when: "Oct 12", text: "Likes to run early, before 9:30 classes." },
+  { when: short(addDays(TODAY_ISO, -4)), text: "Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now." },
+  { when: short(addDays(TODAY_ISO, -3)), text: "Plays club tennis Tuesdays and Thursdays, 4–5:30 PM." },
+  { when: short(addDays(TODAY_ISO, -3)), text: "Likes to run early, before 9:30 classes." },
 ];
-const WORKOUT_LOG = {
-  running_miles_this_week_so_far: 2.0, running_miles_last_week: 7.0,
-  workouts: [
-    { date: "2026-10-13", sport: "Club tennis", minutes: 90, strain: 12.6 },
-    { date: "2026-10-12", sport: "Running", miles: 2.0, minutes: 22, strain: 8.9, avg_hr: 148 },
-    { date: "2026-10-10", sport: "Cycling", minutes: 30, strain: 6.1 },
-    { date: "2026-10-09", sport: "Running", miles: 3.0, minutes: 36, strain: 10.8, avg_hr: 151 },
-    { date: "2026-10-07", sport: "Running", miles: 2.0, minutes: 23, strain: 8.7, avg_hr: 147 },
-    { date: "2026-10-06", sport: "Club tennis", minutes: 90, strain: 8.4 },
-    { date: "2026-10-05", sport: "Running", miles: 2.0, minutes: 23, strain: 9.1, avg_hr: 149 },
-    { date: "2026-10-03", sport: "Running", miles: 2.0, minutes: 24, strain: 8.2, avg_hr: 150 },
-    { date: "2026-10-01", sport: "Club tennis", minutes: 75, strain: 9.8 },
-  ],
-};
 const WEATHER = {
   location: "Winston-Salem, North Carolina",
   today: { summary: "Sunny, 54–76°F, 0% chance of rain", sunrise: "07:31", sunset: "18:43",
@@ -766,54 +783,24 @@ const WEATHER = {
   tomorrow: { summary: "Partly cloudy, 55–72°F, 10% chance of rain" },
 };
 
-// ---------- The calendar: 3 weeks of classes, tennis, and the coach's workouts ----------
+// ---------- Clive's week: a schedule that repeats every week (Monday first) ----------
 const C = (start, end, title, kind = "classes", tag) => [start, end, title, kind, tag];
 const RUN = (start, end, title, tag) => C(start, end, title, "coach", tag);
-const MWF_1 = [C("09:00", "09:50", "BIO 150 Lecture"), C("10:00", "10:50", "CHM 111")];
-const TR = [C("09:30", "10:45", "PSY 151"), C("11:00", "12:15", "MTH 111")];
-const TENNIS = C("16:00", "17:30", "Club tennis", "personal");
-const WEEKS = {
-  last: { monday: "2026-10-05", days: [
-    { plan: ["directions_run", "Run · 2 mi", true], events: [RUN("07:00", "07:30", "Easy run, 2 mi"), ...MWF_1, C("13:00", "13:50", "WRI 111"), C("14:00", "16:50", "CHM 111 Lab")] },
-    { plan: ["sports_tennis", "Tennis, no run", true], events: [...TR, TENNIS] },
-    { plan: ["directions_run", "Run · 2 mi", true], events: [RUN("07:00", "07:30", "Easy run, 2 mi"), ...MWF_1, C("13:00", "13:50", "WRI 111"), C("19:00", "20:30", "PSY study group", "personal")] },
-    { plan: ["bedtime", "Rest day", true], events: [C("10:00", "13:00", "Drive home", "personal")], allDay: [["Fall break", "classes"]] },
-    { plan: ["directions_run", "Long run · 3 mi", true], events: [RUN("08:30", "09:15", "Long run/walk, 3 mi"), C("18:00", "20:30", "Dinner with family", "personal")], allDay: [["Fall break", "classes"]] },
-    { plan: ["pedal_bike", "Easy bike · 30 min", true], events: [RUN("10:00", "10:30", "Easy bike, 30 min"), C("14:00", "17:00", "Drive back to campus", "personal")] },
-    { plan: ["bedtime", "Rest day", true], events: [C("14:00", "16:00", "Study: CHM 111", "personal"), C("18:00", "18:30", "Call home", "personal")] },
-  ] },
-  this: { monday: "2026-10-12", days: [
-    { plan: ["directions_run", "Run · 2 mi", true], events: [RUN("07:00", "07:30", "Easy run, 2 mi"), ...MWF_1, C("13:00", "13:50", "WRI 111"), C("14:00", "16:50", "CHM 111 Lab")] },
-    { plan: ["sports_tennis", "Tennis, no run", true], events: [...TR, TENNIS, C("19:00", "20:00", "Dinner at the Pit", "personal")] },
-    { plan: ["bedtime", "Rest · run moved", true], events: [...MWF_1, C("13:00", "13:50", "WRI 111"), C("14:00", "16:50", "BIO 150 Lab"), C("19:00", "20:30", "CHM study group", "personal")], allDay: [["CHM problem set due", "classes"]] },
-    { plan: ["directions_run", "Run · 2 mi", false], events: [RUN("07:00", "07:40", "Easy run, 2 mi"), ...TR, C("12:30", "13:15", "Lunch with roommates", "personal"), TENNIS, C("19:30", "21:00", "CHM midterm review", "personal")] },
-    { plan: ["bedtime", "Rest · midterm", false], events: [C("09:00", "09:50", "BIO 150 Lecture"), C("10:00", "10:50", "CHM 111 Midterm", "classes", "exam"), C("13:00", "13:50", "WRI 111"), C("18:30", "20:00", "Movie night", "personal")], allDay: [["Mom's birthday", "personal"]] },
-    { plan: ["directions_run", "Long run · 3.5 mi", false], events: [RUN("09:00", "09:55", "Long run/walk, 3.5 mi"), C("12:00", "15:30", "Deacs football game", "personal")] },
-    { plan: ["pedal_bike", "Easy bike · 30 min", false], events: [RUN("10:00", "10:30", "Easy bike, 30 min"), C("14:00", "16:00", "Study: BIO 150", "personal"), C("18:00", "18:30", "Call home", "personal")] },
-  ] },
-  next: { monday: "2026-10-19", days: [
-    { plan: ["directions_run", "Run · 2.5 mi", false], events: [RUN("07:30", "08:10", "Easy run, 2.5 mi", "suggested"), ...MWF_1, C("13:00", "13:50", "WRI 111"), C("14:00", "16:50", "CHM 111 Lab")] },
-    { plan: ["sports_tennis", "Tennis, no run", false], events: [...TR, TENNIS] },
-    { plan: ["directions_run", "Run · 2 mi", false], events: [C("09:00", "09:50", "BIO 150 Exam", "classes", "exam"), C("10:00", "10:50", "CHM 111"), C("13:00", "13:50", "WRI 111"), C("14:00", "16:50", "BIO 150 Lab")] },
-    { plan: ["sports_tennis", "Tennis, no run", false], events: [...TR, TENNIS] },
-    { plan: ["pedal_bike", "Easy bike · 30 min", false], events: [...MWF_1, C("13:00", "13:50", "WRI 111"), C("19:00", "22:00", "Hall formal", "personal")] },
-    { plan: ["directions_run", "Long run · 3.5 mi", false], events: [C("12:00", "14:00", "Lunch with family", "personal")], allDay: [["Family weekend", "personal"]] },
-    { plan: ["bedtime", "Rest day", false], events: [C("11:00", "12:30", "Brunch with family", "personal")], allDay: [["Family weekend", "personal"]] },
-  ] },
-};
-// Each day's planned workout in words (what the AI coach reads and changes).
-const WORKOUTS = {
-  "2026-10-05": "Easy run, 2 miles", "2026-10-06": "Club tennis (no run)", "2026-10-07": "Easy run, 2 miles", "2026-10-08": "Rest day",
-  "2026-10-09": "Long run/walk, 3 miles", "2026-10-10": "Easy bike, 30 min", "2026-10-11": "Rest day",
-  "2026-10-12": "Easy run, 2 miles", "2026-10-13": "Club tennis (no run)", "2026-10-14": "Rest day (run moved to Thursday)",
-  "2026-10-15": "Easy run, 2 miles", "2026-10-16": "Rest day (CHM 111 midterm)", "2026-10-17": "Long run/walk, 3.5 miles", "2026-10-18": "Easy bike, 30 min",
-  "2026-10-19": "Easy run, 2.5 miles", "2026-10-20": "Club tennis (no run)", "2026-10-21": "Easy run, 2 miles", "2026-10-22": "Club tennis (no run)",
-  "2026-10-23": "Easy bike, 30 min", "2026-10-24": "Long run/walk, 3.5 miles", "2026-10-25": "Rest day",
-};
-const ALL_DAYS = [];
-for (const week of Object.values(WEEKS)) week.days.forEach((d, i) => { d.date = addDays(week.monday, i); d.workout = WORKOUTS[d.date]; ALL_DAYS.push(d); });
-const dayOf = iso => ALL_DAYS.find(d => d.date === iso);
-const eventsOn = iso => (dayOf(iso) || { events: [] }).events;
+const BIO = C("09:00", "09:50", "BIO 150 Lecture"), CHM = C("10:00", "10:50", "CHM 111"), WRI = C("13:00", "13:50", "WRI 111");
+const PSY = C("09:30", "10:45", "PSY 151"), MTH = C("11:00", "12:15", "MTH 111"), TENNIS = C("16:00", "17:30", "Club tennis", "personal");
+const SCHEDULE = [
+  { events: [BIO, CHM, WRI, C("14:00", "16:50", "CHM 111 Lab")], workout: "Easy run, 2 miles", at: ["07:00", "07:30"] },
+  { events: [PSY, MTH, TENNIS, C("19:00", "20:00", "Dinner at the Pit", "personal")], workout: "Club tennis (no run)" },
+  { events: [BIO, CHM, WRI, C("14:00", "16:50", "BIO 150 Lab"), C("19:00", "20:30", "CHM study group", "personal")], workout: "Easy run, 2 miles", at: ["07:00", "07:30"] },
+  { events: [PSY, MTH, C("12:30", "13:15", "Lunch with roommates", "personal"), TENNIS], workout: "Club tennis (no run)" },
+  { events: [BIO, CHM, WRI, C("18:30", "20:00", "Movie night", "personal")], workout: "Rest day" },
+  { events: [C("12:00", "15:30", "Deacs football game", "personal")], workout: "Long run/walk, 3.5 miles", at: ["09:00", "09:55"] },
+  { events: [C("14:00", "16:00", "Study: BIO 150", "personal"), C("18:00", "18:30", "Call home", "personal")], workout: "Easy bike, 30 min", at: ["10:00", "10:30"] },
+];
+// The plan builds slowly: last week's long run was shorter, and next week's Monday run is a bit longer.
+const WEEK_CHANGES = { last: { 5: "Long run/walk, 3 miles" }, next: { 0: "Easy run, 2.5 miles" } };
+// Running miles in the 10 weeks before last week, oldest first (the later weeks come from the plan).
+const PAST_WEEKLY_MILES = [3.0, 3.0, 3.5, 3.5, 4.0, 4.0, 4.0, 4.5, 5.0, 6.0];
 const CALENDAR_NAMES = { classes: "WFU Classes", personal: "Tennis & personal", coach: "Training Coach" };
 const KIND_COLORS = { classes: "var(--s1)", personal: "var(--s3)", coach: "var(--s2)" };
 
@@ -858,7 +845,8 @@ function splitWorkout(text) {
   const paren = text.match(/^(.*?)\s*\((.*)\)$/);
   if (paren) return [paren[1], paren[2].charAt(0).toUpperCase() + paren[2].slice(1)];
   const [title, ...rest] = text.split(", ");
-  return [title, rest.join(" · ")];
+  const detail = rest.join(" · ");
+  return [title, detail.charAt(0).toUpperCase() + detail.slice(1)];
 }
 // A plan chip (icon, short text) for a workout written in words.
 function chipFor(text, done = false) {
@@ -870,6 +858,78 @@ function chipFor(text, done = false) {
   else if (/run|walk|jog/.test(t)) { icon = "directions_run"; label = `${t.includes("long") ? "Long run" : "Run"}${miles ? ` · ${miles} mi` : mins ? ` · ${mins} min` : ""}`; }
   return [icon, label.length > 22 ? label.slice(0, 21) + "…" : label, done];
 }
+
+// =====================================================================================
+// Build last week, this week, and next week on the calendar from the schedule
+// =====================================================================================
+const WEEKS = {};
+for (const [name, shift] of [["last", -7], ["this", 0], ["next", 7]]) {
+  const monday = addDays(THIS_MONDAY, shift);
+  WEEKS[name] = { monday, days: SCHEDULE.map((s, i) => {
+    const workout = (WEEK_CHANGES[name] || {})[i] || s.workout;
+    const events = s.events.map(e => e.slice());
+    if (s.at) events.unshift(RUN(s.at[0], s.at[1], workout.replace(/ miles?\b/, " mi")));
+    return { date: addDays(monday, i), workout, events, allDay: [] };
+  }) };
+}
+const ALL_DAYS = [...WEEKS.last.days, ...WEEKS.this.days, ...WEEKS.next.days];
+const dayOf = iso => ALL_DAYS.find(d => d.date === iso);
+const eventsOn = iso => (dayOf(iso) || { events: [] }).events;
+
+// The CHM 111 midterm is on the next day CHM meets (Mon, Wed, or Fri) after today. It's a rest day,
+// with a review session the night before. There's also a BIO 150 exam next Wednesday.
+const EXAM_DATE = [1, 2, 3].map(n => addDays(TODAY_ISO, n)).find(iso => [0, 2, 4].includes(weekdayIndex(iso)));
+const examDay = dayOf(EXAM_DATE);
+examDay.workout = "Rest day (CHM 111 midterm)";
+examDay.events = examDay.events.filter(e => e[3] !== "coach")
+  .map(e => e[2] === "CHM 111" ? C("10:00", "10:50", "CHM 111 Midterm", "classes", "exam") : e);
+const examEve = dayOf(addDays(EXAM_DATE, -1));
+examEve.events = examEve.events.filter(e => !(e[3] === "personal" && hours(e[0]) < 21 && hours(e[1]) > 19.5))
+  .concat([C("19:30", "21:00", "CHM midterm review", "personal")]);
+const bioDay = dayOf(addDays(THIS_MONDAY, 9));
+bioDay.events = bioDay.events.map(e => e[2] === "BIO 150 Lecture" ? C("09:00", "09:50", "BIO 150 Exam", "classes", "exam") : e);
+
+// All-day events: a due date, a birthday, last Friday off, and family weekend next weekend.
+dayOf(addDays(THIS_MONDAY, 2)).allDay.push(["CHM problem set due", "classes"]);
+dayOf(addDays(THIS_MONDAY, 4)).allDay.push(["Mom's birthday", "personal"]);
+const dayOff = dayOf(addDays(THIS_MONDAY, -3));
+dayOff.allDay.push(["No classes", "classes"]);
+dayOff.events = dayOff.events.filter(e => e[3] !== "classes").concat([C("10:00", "13:00", "Drive home", "personal")]);
+for (const [n, plans] of [[12, C("12:00", "14:00", "Lunch with family", "personal")], [13, C("11:00", "12:30", "Brunch with family", "personal")]]) {
+  const d = dayOf(addDays(THIS_MONDAY, n));
+  d.allDay.push(["Family weekend", "personal"]);
+  d.events = d.events.filter(e => e[3] !== "personal").concat([plans]);
+}
+
+// The coach's workouts on Google Calendar: the ones already done, today's, and the next one as a
+// suggestion waiting for an OK (like the real app, nothing further is added yet).
+let suggestedNext = false;
+for (const d of ALL_DAYS) {
+  const workout = d.events.find(e => e[3] === "coach");
+  if (!workout || d.date <= TODAY_ISO) continue;
+  if (suggestedNext) d.events = d.events.filter(e => e !== workout);
+  else { workout[4] = "suggested"; suggestedNext = true; }
+}
+ALL_DAYS.forEach(d => { d.events.sort((a, b) => hours(a[0]) - hours(b[0])); d.plan = chipFor(d.workout, d.date < TODAY_ISO); });
+const ORIGINAL_TODAY = dayOf(TODAY_ISO).workout;
+
+// Running miles: planned (from the plan in words) and done (days before today).
+const MILES_RE = /(\d+(?:\.\d+)?)\s*(?:mi\b|miles?)/i;
+const runMiles = d => { const t = d.workout.toLowerCase(); return !t.includes("rest") && /run|walk/.test(t) && MILES_RE.test(t) ? Number(t.match(MILES_RE)[1]) : 0; };
+const plannedMiles = week => round(WEEKS[week].days.reduce((sum, d) => sum + runMiles(d), 0), 1);
+const doneMiles = week => round(WEEKS[week].days.filter(d => d.date < TODAY_ISO).reduce((sum, d) => sum + runMiles(d), 0), 1);
+
+// What WHOOP recorded over the last 14 days (the coach's get_whoop_workouts reads this).
+const WORKOUT_LOG = {
+  running_miles_this_week_so_far: doneMiles("this"), running_miles_last_week: doneMiles("last"),
+  workouts: ALL_DAYS.filter(d => d.date < TODAY_ISO).slice(-14).reverse().map(d => {
+    const t = d.workout.toLowerCase(), day_strain = (DAYS.find(x => x.date === d.date) || {}).strain;
+    if (t.includes("tennis")) return { date: d.date, sport: "Club tennis", minutes: 90, day_strain };
+    if (t.includes("bike")) return { date: d.date, sport: "Cycling", minutes: 30, day_strain };
+    if (runMiles(d)) return { date: d.date, sport: "Running", miles: runMiles(d), minutes: Math.round(runMiles(d) * 11.5), avg_hr: 149, day_strain };
+    return null;
+  }).filter(Boolean),
+};
 
 // =====================================================================================
 // Sleep plan (the same rules as sleep_plan.py). It updates if the coach changes a morning.
@@ -904,7 +964,7 @@ function drawSleep() {
   const left = `<div><div class="sl-pair">
       <div class="sl-time"><div class="k"><span class="icon">bedtime</span>In bed by</div><div class="big">${big(t.bed)}</div></div>
       <div class="sl-time"><div class="k"><span class="icon">alarm</span>Wake up</div><div class="big">${big(t.wake)}</div></div></div>
-    <p class="sl-why">${why} Your CHM 111 midterm is at 10:00, so tonight's sleep matters.
+    <p class="sl-why">${why}${daysFromToday(EXAM_DATE) === 1 ? " Your CHM 111 midterm is at 10:00 tomorrow, so tonight's sleep matters." : ""}
       <span class="sl-math">${t.need} h needed ÷ ${Math.round(EFFICIENCY * 100)}% sleep efficiency = ${duration(t.inBed)} in bed</span></p>
     <div class="badges"><span class="badge"><span class="icon">coffee</span>No caffeine after ${clockMin(t.caffeine)}</span>
       <span class="badge"><span class="icon">schedule</span>${duration(Math.abs(t.earlier))} ${t.earlier > 0 ? "earlier" : "later"} than usual</span></div></div>`;
@@ -978,7 +1038,7 @@ function stepsHtml(steps) {
 }
 const toolCount = steps => steps.filter(s => s[1]).length;
 
-let adjustedLabel = "Moved from Wednesday";
+let adjustedLabel = null;
 function drawBadges() {
   const coachToday = eventsOn(TODAY_ISO).find(e => e[3] === "coach");
   const badges = [];
@@ -1167,20 +1227,15 @@ function sleepChart(rows) {
 }
 
 // Running miles per week: done (solid) and planned by the coach (dashed outline) for this week and next.
-const WEEKLY_MILES = [["Jul 27", 3.0], ["Aug 3", 3.0], ["Aug 10", 3.5], ["Aug 17", 3.5], ["Aug 24", 4.0], ["Aug 31", 4.0],
-  ["Sep 7", 4.0], ["Sep 14", 4.5], ["Sep 21", 5.0], ["Sep 28", 6.0], ["Oct 5", 7.0]];
-const MILES_RE = /(\d+(?:\.\d+)?)\s*(?:mi\b|miles?)/i;
-// Planned running miles in a week, from the plan in words (rest, tennis, and bike days are 0).
-const plannedMiles = week => round(WEEKS[week].days.reduce((sum, d) => {
-  const t = d.workout.toLowerCase();
-  return sum + (!t.includes("rest") && /run|walk/.test(t) && MILES_RE.test(t) ? Number(t.match(MILES_RE)[1]) : 0);
-}, 0), 1);
 let rangeDays = 30;
 function milesChart(count = rangeDays) {
   const el = document.getElementById("miles-chart");
   const weeks = Math.max(4, Math.floor(count / 7));
-  const data = WEEKLY_MILES.slice(-(weeks - 1)).map(([w, m]) => ({ week: w, done: m, planned: 0, when: "past" }))
-    .concat([{ week: "Oct 12", done: 2.0, planned: plannedMiles("this"), when: "now" }, { week: "Oct 19", done: 0, planned: plannedMiles("next"), when: "next" }]);
+  const past = PAST_WEEKLY_MILES.concat([doneMiles("last")])
+    .map((done, k, list) => ({ week: short(addDays(THIS_MONDAY, -7 * (list.length - k))), done, planned: 0, when: "past" }));
+  const data = past.slice(-(weeks - 1)).concat([
+    { week: short(THIS_MONDAY), done: doneMiles("this"), planned: plannedMiles("this"), when: "now" },
+    { week: short(addDays(THIS_MONDAY, 7)), done: 0, planned: plannedMiles("next"), when: "next" }]);
   const top = Math.max(10, Math.ceil(Math.max(...data.map(d => Math.max(d.done, d.planned))) / 2) * 2 + 2);
   const ticks = []; for (let t = 0; t <= top; t += 2) ticks.push(t);
   const y = frame(el, 0, top, ticks);
@@ -1202,7 +1257,7 @@ function milesChart(count = rangeDays) {
     }
     if (data.length <= 8 || i % 2 === (data.length - 1) % 2) el.append(svg("text", { x: cx, y: H - 6, "text-anchor": "middle" }, d.week));
   });
-  document.getElementById("run-note").innerHTML = `<b>2 of ${plannedMiles("this")} miles</b> done this week · 7 last week`;
+  document.getElementById("run-note").innerHTML = `<b>${doneMiles("this")} of ${plannedMiles("this")} miles</b> done this week · ${doneMiles("last")} last week`;
 }
 
 function bedtimeChart(rows) {
@@ -1231,6 +1286,77 @@ function strainChart(rows) {
     el.append(tooltip(svg("path", { d: bar(x.mid(i) - x.barW / 2, top, x.barW, y(0) - top), fill: "var(--s1)" }), `${short(d.date)}: strain ${d.strain}`));
   });
   dateLabels(el, rows, x);
+}
+
+// How hard you trained: minutes in easy, moderate, and hard heart-rate zones each week (stacked).
+const EFFORT_COLORS = ["#86b6ef", "#2a78d6", "#184f95"];
+function effortChart(count = rangeDays) {
+  const el = document.getElementById("effort-chart"), weeks = Math.max(4, Math.floor(count / 7)), mix = seeded(7);
+  const tennisSoFar = WEEKS.this.days.filter(d => d.date < TODAY_ISO && d.workout.includes("tennis")).length;
+  const all = PAST_WEEKLY_MILES.concat([doneMiles("last"), doneMiles("this")]).map((miles, k, list) => {
+    const now = k === list.length - 1;
+    const minutes = miles * 11.5 + (now ? tennisSoFar * 90 : 180) + (now ? 0 : 30);  // runs + tennis + an easy bike
+    const easyShare = 0.66 + 0.1 * mix(), hardShare = 0.09 + 0.06 * mix();
+    return { week: short(addDays(THIS_MONDAY, -7 * (list.length - 1 - k))),
+             zones: [minutes * easyShare, minutes * (1 - easyShare - hardShare), minutes * hardShare].map(m => Math.round(m)) };
+  }).slice(-weeks);
+  const most = Math.max(...all.map(w => w.zones[0] + w.zones[1] + w.zones[2]));
+  const step = most > 600 ? 200 : 100, top = Math.ceil(most / step) * step;
+  const ticks = []; for (let t = 0; t <= top; t += step) ticks.push(t);
+  const y = frame(el, 0, top, ticks);
+  const slot = plotW / all.length, w = Math.min(26, slot * 0.6);
+  all.forEach((week, i) => {
+    const cx = M.l + slot * i + slot / 2;
+    let base = 0;
+    week.zones.forEach((m, z) => {
+      const piece = z === 2 ? svg("path", { d: bar(cx - w / 2, y(base + m), w, y(base) - y(base + m)), fill: EFFORT_COLORS[z] })
+                            : svg("rect", { x: cx - w / 2, y: y(base + m), width: w, height: y(base) - y(base + m), fill: EFFORT_COLORS[z] });
+      piece.setAttribute("stroke", "var(--card)"); piece.setAttribute("stroke-width", 1.5);
+      el.append(tooltip(piece, `Week of ${week.week}: ${m} min ${["easy", "moderate", "hard"][z]}`));
+      base += m;
+    });
+    if (all.length <= 8 || i % 2 === (all.length - 1) % 2) el.append(svg("text", { x: cx, y: H - 6, "text-anchor": "middle" }, week.week));
+  });
+}
+
+// Sleep vs. next-morning recovery: one dot per morning, with a straight trend line through them.
+function scatterChart(rows) {
+  const el = document.getElementById("scatter-chart");
+  const y = frame(el, 0, 100, [0, 20, 40, 60, 80, 100]);
+  const xs = rows.map(d => d.sleep), lo = Math.floor(Math.min(...xs)) - 0.5, hi = Math.ceil(Math.max(...xs)) + 0.5;
+  const x = v => M.l + (v - lo) / (hi - lo) * plotW;
+  for (let t = Math.ceil(lo); t <= hi; t++) {
+    el.append(svg("line", { x1: x(t), x2: x(t), y1: M.t, y2: M.t + plotH, class: "grid" }));
+    el.append(svg("text", { x: x(t), y: H - 6, "text-anchor": "middle" }, `${t}h`));
+  }
+  if (rows.length < 5) {
+    el.append(svg("text", { x: W / 2, y: H / 2, "text-anchor": "middle" }, "Needs at least 5 nights."));
+    return;
+  }
+  const mx = avg(rows, "sleep"), my = avg(rows, "recovery");
+  const slope = rows.reduce((s, d) => s + (d.sleep - mx) * (d.recovery - my), 0) / rows.reduce((s, d) => s + (d.sleep - mx) ** 2, 0);
+  const fit = v => clamp(my + slope * (v - mx), 0, 100);
+  el.append(svg("line", { x1: x(lo + 0.3), x2: x(hi - 0.3), y1: y(fit(lo + 0.3)), y2: y(fit(hi - 0.3)), stroke: "var(--muted)", "stroke-width": 2, "stroke-linecap": "round" }));
+  rows.forEach(d => el.append(tooltip(svg("circle", { cx: x(d.sleep), cy: y(d.recovery), r: 4.5, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2 }),
+    `${short(d.date)}: slept ${d.sleep} h, recovery ${d.recovery}%`)));
+}
+
+// Your best day of the week: average recovery for each weekday, with the best one in blue.
+function weekdayChart(rows) {
+  const el = document.getElementById("weekday-chart");
+  const y = frame(el, 0, 100, [0, 20, 40, 60, 80, 100]);
+  if (rows.length < 14) {
+    el.append(svg("text", { x: W / 2, y: H / 2, "text-anchor": "middle" }, "Needs at least 2 weeks of data."));
+    return;
+  }
+  const means = [0, 1, 2, 3, 4, 5, 6].map(i => { const on = rows.filter(d => weekdayIndex(d.date) === i); return Math.round(avg(on, "recovery")); });
+  const best = means.indexOf(Math.max(...means)), slot = plotW / 7, w = Math.min(40, slot * 0.55);
+  means.forEach((m, i) => {
+    const cx = M.l + slot * i + slot / 2;
+    el.append(tooltip(svg("path", { d: bar(cx - w / 2, y(m), w, y(0) - y(m)), fill: i === best ? "var(--s1)" : "var(--axis)" }),
+      `${WEEKDAYS_LONG[(i + 1) % 7]}s: ${m}% average recovery`));
+    el.append(svg("text", { x: cx, y: H - 6, "text-anchor": "middle" }, WEEKDAYS[(i + 1) % 7]));
+  });
 }
 
 // =====================================================================================
@@ -1285,6 +1411,9 @@ function drawTrends(count = rangeDays) {
   lineChart("rhr-chart", rows, "rhr", "bpm", "Resting HR");
   bedtimeChart(rows);
   strainChart(rows);
+  effortChart(count);
+  scatterChart(rows);
+  weekdayChart(rows);
   insights(rows);
   table(rows);
 }
@@ -1335,7 +1464,7 @@ function formatAnswer(text) {
 function snapshot() {
   const month = DAYS.slice(-31, -1);
   return {
-    today: TODAY_ISO, now: "06:45", today_text: "Thursday, October 15, 2026",
+    today: TODAY_ISO, now: NOW_HHMM, today_text: longDate(TODAY_ISO),
     profile: { ...PROFILE }, notes: NOTES.map(n => `${n.when}: ${n.text}`),
     days: DAYS.slice(-14).map(d => ({ date: d.date, recovery: d.recovery, hrv: d.hrv, rhr: d.rhr, sleep: d.sleep, need: d.need,
       deep: d.deep, rem: d.rem, light: d.light, awake: d.awake, strain: d.strain,
@@ -1346,7 +1475,8 @@ function snapshot() {
       resting_heart_rate: { last_7_day_average: RHR_TREND.average, his_normal_range: [RHR_TREND.low, RHR_TREND.high], status: `${RHR_TREND.status} his normal range` },
       sleep: { usual_bedtime: clockMin(USUAL_BED), usual_wake_time: clockMin(USUAL_WAKE), average_sleep_last_7_nights: round(avg(DAYS.slice(-7), "sleep"), 1),
                usual_sleep_need_hours: 8.0, sleep_efficiency_percent: Math.round(EFFICIENCY * 100) },
-      training_load: { running_miles_this_week_so_far: 2.0, running_miles_last_week: 7.0, average_weekly_running_miles_4_weeks_before: 5.4,
+      training_load: { running_miles_this_week_so_far: doneMiles("this"), running_miles_last_week: doneMiles("last"),
+                       average_weekly_running_miles_4_weeks_before: round(PAST_WEEKLY_MILES.slice(-4).reduce((a, b) => a + b, 0) / 4, 1),
                        share_of_workout_time_easy_percent: 74, other_sports: ["Club tennis, Tuesdays and Thursdays"] },
       patterns_in_his_data: PATTERNS,
     },
@@ -1392,7 +1522,7 @@ function applyChanges(changes = {}) {
   }
   if (changes.today && changes.today.workout) {
     dayOf(TODAY_ISO).plan = chipFor(changes.today.workout);
-    if (chipFor(changes.today.workout)[1] !== chipFor(WORKOUTS[TODAY_ISO])[1]) adjustedLabel = "Adjusted by the coach";
+    if (chipFor(changes.today.workout)[1] !== chipFor(ORIGINAL_TODAY)[1]) adjustedLabel = "Adjusted by the coach";
   }
   for (const note of changes.notes || []) { NOTES.push({ when: short(TODAY_ISO), text: note }); labels.push("Saved a note"); }
   if (changes.goal && changes.goal.goal) {
@@ -1484,31 +1614,63 @@ function newChat() {
   document.getElementById("message").focus();
 }
 
+// Today's decision, as the coach planned it this morning. It depends on what today's plan is.
+function todaysDecision() {
+  const d = dayOf(TODAY_ISO), w = d.workout.toLowerCase(), r = TODAY.recovery;
+  const run = d.events.find(e => e[3] === "coach");
+  const firstClass = d.events.find(e => e[3] === "classes");
+  const examTomorrow = daysFromToday(EXAM_DATE) === 1;
+  const [title, detail] = splitWorkout(d.workout);
+  let headline = title, when = detail, plan = "", thought;
+  if (w.includes("tennis")) {
+    headline = "Club tennis, no run"; when = "4:00–5:30 PM · keep it to practice";
+    plan = "Club tennis at 4:00 is today's training, so there's no run. Two hard sessions in one day would be too much.";
+    thought = "Tennis is today's training. A run on top would stack two hard sessions, so the plan stays tennis only.";
+  } else if (w.includes("rest")) {
+    headline = "Rest day"; when = "An easy walk is fine";
+    plan = w.includes("midterm") ? "Your CHM 111 midterm is today at 10:00, so rest and save your energy for it."
+                                 : "Resting today keeps your legs fresh for the weekend long run.";
+    thought = "A planned rest day. Recovery looks fine, and rest days are part of building up safely.";
+  } else {
+    if (run) when = `${clockRange(run[0], run[1])}${detail ? ` · ${detail}` : ""}`;
+    if (run) plan = `Go at ${clock(run[0])}${firstClass ? `, before your ${clock(firstClass[0])} class,` : ""} while it's cool and dry.`;
+    thought = "Recovery is green and HRV is in a good place, so the planned workout stays, kept easy.";
+  }
+  const why = [
+    `Recovery is ${r}% (${zoneName(r).toLowerCase()}), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ${HRV_TREND.low}–${HRV_TREND.high}.`,
+    `You slept ${TODAY.sleep} of the ${TODAY.need} hours you needed.`, plan,
+    examTomorrow ? "Your CHM 111 midterm is tomorrow at 10:00, so keep today easy and protect tonight's sleep." : "",
+    `Tonight, be in bed by ${clockMin(TONIGHT.bed)}.`,
+  ].filter(Boolean).join(" ");
+  const steps = [
+    ["sync", null, "Downloaded the latest WHOOP data (14 days)."],
+    ["psychology", null, thought + (examTomorrow ? " The midterm is tomorrow, so sleep matters tonight." : ""), "thought"],
+    ["monitor_heart", "get_whoop_recovery", `latest recovery ${r}%, HRV ${TODAY.hrv} ms`],
+    ["bedtime", "get_whoop_sleep", `last night ${TODAY.sleep} h asleep, ${TODAY.need} h needed`],
+    ["local_fire_department", "get_whoop_strain", `yesterday's strain ${YESTERDAY.strain}`],
+    ["directions_run", "get_whoop_workouts", `${doneMiles("this")} running miles this week (${doneMiles("last")} last week)`],
+    ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
+    ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`],
+    ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
+    ["event", "get_calendar_events", `${eventsOn(TODAY_ISO).length} events today${examTomorrow ? "; CHM 111 midterm tomorrow" : ""}`],
+    ["calendar_month", "get_training_plan", "14 days planned"],
+    ["history", "get_training_history", `${doneMiles("last")} running miles last week, all planned workouts done`],
+    ...(run ? [["calendar_add_on", "create_calendar_event", `suggested ${clock(run[0])} for ${Math.round((hours(run[1]) - hours(run[0])) * 60)} min, then Clive approved it`]] : []),
+    ["save", "save_daily_log", "saved today's decision"],
+    ["check_circle", null, `Decision: ${d.workout.charAt(0).toLowerCase() + d.workout.slice(1)}${run ? ` at ${clock(run[0])}` : ""}.`, "done"],
+  ];
+  showDecision(headline, when, why, steps, `Planned ${NOW_HOUR >= 6.7 ? "6:42 AM" : "last night"} · ${toolCount(steps)} tools · claude-haiku-5-5`);
+}
+
 // =====================================================================================
 // Start: draw everything, wire up the switches, and check whether the live coach is on
 // =====================================================================================
 drawSleep();
-showDecision("Easy run", "7:00–7:40 AM · 2 miles",
-  `Recovery is ${TODAY.recovery}% (green), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ` +
-  `${HRV_TREND.low}–${HRV_TREND.high}. You slept ${TODAY.sleep} of the ${TODAY.need} hours you needed. Club tennis at 4:00 adds ` +
-  `load and your CHM 111 midterm is tomorrow at 10, so keep this short and easy, before your 9:30 class while it's 56°F and dry. ` +
-  `Tonight, be in bed by ${clockMin(TONIGHT.bed)}.`,
-  [["sync", null, "Downloaded the latest WHOOP data (14 days)."],
-   ["psychology", null, "Recovery is green and HRV is in Clive's normal range, but tennis at 4 PM adds load and the midterm is tomorrow. A short, easy run in the morning fits best.", "thought"],
-   ["monitor_heart", "get_whoop_recovery", `latest recovery ${TODAY.recovery}%, HRV ${TODAY.hrv} ms`],
-   ["bedtime", "get_whoop_sleep", `last night ${TODAY.sleep} h asleep, ${TODAY.need} h needed`],
-   ["local_fire_department", "get_whoop_strain", `yesterday's strain ${YESTERDAY.strain}`],
-   ["directions_run", "get_whoop_workouts", "2.0 running miles this week (7.0 last week)"],
-   ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
-   ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`],
-   ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
-   ["event", "get_calendar_events", "6 events today, free 6:00–9:15 AM; CHM 111 midterm tomorrow"],
-   ["calendar_month", "get_training_plan", "14 days planned"],
-   ["history", "get_training_history", "Wednesday's run was moved (recovery 48%)"],
-   ["calendar_add_on", "create_calendar_event", "suggested 7:00 AM for 40 min, then Clive approved it"],
-   ["save", "save_daily_log", "saved today's decision"],
-   ["check_circle", null, "Decision: easy run, 2 miles at 7:00 AM.", "done"]],
-  "Planned 6:42 AM · 12 tools · claude-haiku-5-5");
+todaysDecision();
+const todayDate = toDate(TODAY_ISO);
+document.getElementById("today-label").innerHTML =
+  `<span class="icon">today</span>${WEEKDAYS_LONG[todayDate.getUTCDay()]}, ${MONTHS_LONG[todayDate.getUTCMonth()]} ${todayDate.getUTCDate()}`;
+document.getElementById("greeting").textContent = `Good ${NOW_HOUR < 12 ? "morning" : NOW_HOUR < 18 ? "afternoon" : "evening"}, Clive`;
 drawAgenda();
 drawProfile();
 
