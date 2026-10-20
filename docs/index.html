@@ -354,9 +354,7 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .msg .body p:last-child, .msg .body ul:last-child { margin-bottom: 0; }
 .msg .body ul { margin: 0 0 10px; padding-left: 20px; }
 .msg .body li { margin: 3px 0; }
-.msg .time { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .msg details.steps { margin-top: 12px; }
-.day-break { text-align: center; font-size: 12px; color: var(--muted); margin: 26px 0 6px; }
 .composer {
   margin-top: 26px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: var(--raised); border-radius: 14px; padding: 13px 14px 13px 18px; color: var(--muted); font-size: 14px;
@@ -386,8 +384,6 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .live-note { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
 button.btn { font-family: inherit; cursor: pointer; }
 button.btn:disabled { opacity: 0.7; cursor: progress; }
-.live-head { display: flex; align-items: center; gap: 8px; margin: 32px 0 4px; font-size: 13px; font-weight: 600; color: var(--text-2); }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
 .suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .suggest button {
   font: 500 13.5px/1.2 Inter, system-ui, sans-serif; color: var(--text); background: var(--card); cursor: pointer;
@@ -395,8 +391,12 @@ button.btn:disabled { opacity: 0.7; cursor: progress; }
 }
 .suggest button:hover { background: var(--raised); }
 .suggest .icon { font-size: 17px; vertical-align: 0; color: var(--s1); }
-form.composer { color: var(--text); }
-form.composer:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--s1) 45%, transparent); }
+form.composer { color: var(--text); position: sticky; bottom: 16px; z-index: 5; border: 1px solid var(--border); box-shadow: 0 17px 0 0 var(--page); }
+#page-coach:not([hidden]) { display: flex; flex-direction: column; min-height: calc(100vh - 150px); padding-bottom: 8px; }
+#page-coach form.composer { margin-top: auto; }
+#page-coach .fine { margin-top: 18px; }
+.offline { color: var(--text-2); background: var(--raised); border-radius: 12px; padding: 12px 16px; margin: 0; }
+form.composer:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--s1) 45%, transparent), 0 17px 0 0 var(--page); }
 .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; color: var(--text); font: 15px/1.5 Inter, system-ui, sans-serif; outline: none; max-height: 140px; padding: 0; }
 .composer textarea::placeholder { color: var(--muted); }
 .composer button.send { border: 0; cursor: pointer; background: var(--s1); color: #fff; flex: none; }
@@ -594,20 +594,18 @@ footer p { margin: 0; max-width: 640px; }
   <div class="eyebrow"><span class="icon">forum</span>Ask the coach</div>
   <div class="title-row">
     <h1>What's on your mind, Clive?</h1>
-    <span class="btn" title="In the real app, this starts a new conversation"><span class="icon">add_comment</span>New chat</span>
+    <button class="btn" id="new-chat" type="button" hidden><span class="icon">add_comment</span>New chat</button>
   </div>
   <p class="intro">Ask about a workout, your sleep, or a goal you're working toward. The coach looks at your WHOOP data,
     your calendar, the weather, and your plan before it answers, and it remembers what you tell it.</p>
-  <div id="chat"></div>
-  <div class="live-head"><i class="live-dot"></i><span id="live-label">Your turn: the coach is live</span></div>
   <div id="live" aria-live="polite"></div>
   <div class="suggest" id="suggest"></div>
+  <p class="fine">Training suggestions only, not medical advice. If something hurts, see a doctor or athletic trainer.
+    This demo answers from Clive's sample data, and nothing you type is saved.</p>
   <form class="composer" id="composer">
-    <textarea id="message" rows="1" maxlength="500" placeholder="Ask about Clive's training, sleep, or plan" aria-label="Message the coach"></textarea>
+    <textarea id="message" rows="1" maxlength="500" placeholder="Message the coach" aria-label="Message the coach"></textarea>
     <button class="send" id="send" type="submit" aria-label="Send" disabled><span class="icon">arrow_upward</span></button>
   </form>
-  <p class="fine" id="live-fine">This is real Claude AI coaching Clive's sample data. Nothing you type is saved, and any changes reset when
-    you reload. Don't type personal information. Training suggestions only, not medical advice.</p>
 </div>
 
 <!-- ================================= COACHING PROFILE ================================ -->
@@ -1310,34 +1308,6 @@ function drawProfile() {
 // =====================================================================================
 // Ask the coach: a saved sample conversation, then the live coach
 // =====================================================================================
-const CHAT = [
-  { day: "Monday, October 12" },
-  { you: "I want to run a 10K on December 6. Can you plan for it?", time: "8:12 PM" },
-  { coach: `<p>Done. Your goal is saved: your first 10K on Sunday, Dec 6, about 7 weeks away. You ran 7 miles last week,
-      so it's realistic if we build slowly.</p>
-      <ul><li><b>Weeks 1–3:</b> 3 runs a week, about 7.5 → 9 miles in total. The long run is on Saturday and grows half a mile a week.</li>
-      <li><b>Weeks 4–6:</b> the long run reaches 5.5 miles, then 6.</li>
-      <li><b>Race week:</b> shorter, easy runs so you're fresh on the day.</li></ul>
-      <p>Runs stay off Tuesdays and Thursdays because of club tennis, and every week has 2 rest or easy-bike days.
-      The next 4 weeks are on your plan now.</p>`,
-    steps: [["person_search", "get_personal_patterns", "HRV within your normal range; 7.0 running miles last week, 74% of training easy"],
-            ["directions_run", "get_whoop_workouts", "9 workouts in 14 days, including 4 club tennis sessions"],
-            ["calendar_month", "get_training_plan", "7 days planned"],
-            ["flag", "set_goal", "saved your goal: Run my first 10K · 2026-12-06"],
-            ["edit_calendar", "update_training_plan", "wrote 28 days of the plan"],
-            ["bookmark_add", "remember_about_them", "remembered: Plays club tennis Tuesdays and Thursdays, 4–5:30 PM."]] },
-  { day: "Tuesday, October 13" },
-  { you: "My left shin felt a little tight after Saturday's long run.", time: "9:40 PM" },
-  { coach: `<p>Thanks for telling me. I'll remember it. Tightness after your longest run is an early warning sign, so:</p>
-      <ul><li>Saturday's long run stays at 3.5 miles instead of going up.</li>
-      <li>If it's sore on a run day, swap that run for a 30-minute easy bike.</li>
-      <li>Pain that gets worse, or that hurts when you press on the bone, means no running and a visit to the athletic trainer.</li></ul>`,
-    steps: [["bookmark_add", "remember_about_them", "remembered: Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now."],
-            ["calendar_month", "get_training_plan", "14 days planned"],
-            ["edit_calendar", "update_training_plan", "wrote 2 days of the plan"]] },
-  { day: "Today" },
-  { you: "Can I still play tennis tonight?", time: "6:50 AM" },
-];
 function coachBubble(body) {
   return `<div class="msg coach"><div class="who"><span class="icon fill">directions_run</span></div><div class="body">${body}</div></div>`;
 }
@@ -1346,24 +1316,6 @@ function stepsDetails(steps) {
   return count ? `<details class="steps"><summary><span class="icon">account_tree</span>Looked at ${count} thing${count === 1 ? "" : "s"}` +
     `<span class="icon chev">expand_more</span></summary>${stepsHtml(steps)}</details>` : "";
 }
-function drawSampleChat() {
-  const tennis = { coach: `<p>Yes, play. Your recovery is ${TODAY.recovery}% and your 7-day HRV is ${HRV_TREND.status} your normal range, so one
-      session is fine on top of this morning's easy 2 miles.</p>
-      <p>Two things, since your CHM 111 midterm is tomorrow at 10:00:</p>
-      <ul><li>Keep it to practice, not a long match. Your recovery the morning after hard days is usually lower.</li>
-      <li>Be in bed by ${clockMin(TONIGHT.bed)} to get ${TONIGHT.need} hours of sleep, and skip caffeine after ${clockMin(TONIGHT.caffeine)}.</li></ul>`,
-    steps: [["monitor_heart", "get_whoop_recovery", `latest recovery ${TODAY.recovery}%, HRV ${TODAY.hrv} ms`],
-            ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
-            ["event", "get_calendar_events", "next 2 days: club tennis 4:00 PM today, CHM 111 midterm 10:00 AM tomorrow"],
-            ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`]] };
-  document.getElementById("chat").innerHTML = CHAT.concat([tennis]).map(m => {
-    if (m.day) return `<div class="day-break">${m.day}</div>`;
-    if (m.you) return `<div class="msg you"><div class="who"><span class="icon">person</span></div>` +
-      `<div><div class="time">${m.time}</div><div class="body">${esc(m.you)}</div></div></div>`;
-    return coachBubble(m.coach + stepsDetails(m.steps));
-  }).join("");
-}
-
 // Turn the coach's plain text into HTML: paragraphs, "- " lists, and **bold**.
 function formatAnswer(text) {
   const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
@@ -1454,11 +1406,12 @@ function applyChanges(changes = {}) {
 
 let coachReady = false, busy = false;
 const LIVE = [];  // this visit's conversation, so the coach remembers what was just said
+// The same suggestions as the real app (chat.py), shown until the first message.
 const SUGGESTIONS = [
-  ["sports_tennis", "Should I play tennis tonight or rest?"],
-  ["swap_horiz", "Move Saturday's long run to Sunday"],
-  ["bedtime", "How has my sleep been this week?"],
-  ["flag", "Plan my next two weeks for the 10K"],
+  ["flag", "Help me plan for a 10K"],
+  ["sports_tennis", "Can I play tennis tonight?"],
+  ["bedtime", "How has my sleep been lately?"],
+  ["help", "Why is today an easy day?"],
 ];
 
 async function sendMessage(text) {
@@ -1468,8 +1421,10 @@ async function sendMessage(text) {
   if (!coachReady) { showOffline(); return; }
   busy = true; box.value = ""; sizeBox(); updateSend();
   const live = document.getElementById("live");
+  document.getElementById("suggest").hidden = true;      // like the real app: suggestions only before the first message
+  document.getElementById("new-chat").hidden = false;
   live.insertAdjacentHTML("beforeend", `<div class="msg you"><div class="who"><span class="icon">person</span></div>` +
-    `<div><div class="time">Just now</div><div class="body">${esc(text)}</div></div></div>`);
+    `<div class="body">${esc(text)}</div></div>`);
   const answer = html("div", "", coachBubble(`<span class="typing"><i></i><i></i><i></i> Looking at Clive's data</span>`)).firstChild;
   live.append(answer);
   answer.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -1516,11 +1471,17 @@ async function planMyDay() {
 function sizeBox() { const box = document.getElementById("message"); box.style.height = "auto"; box.style.height = `${box.scrollHeight}px`; }
 function updateSend() { document.getElementById("send").disabled = busy || !document.getElementById("message").value.trim(); }
 function showOffline() {
-  document.getElementById("live-label").textContent = "The live coach is switched off right now";
   document.getElementById("suggest").hidden = true;
   document.getElementById("composer").hidden = true;
-  document.getElementById("live-fine").textContent = "The saved conversation above shows what it can do.";
-  document.querySelector(".live-dot").style.background = "var(--muted)";
+  document.getElementById("live").innerHTML = '<p class="offline">The coach is switched off right now. Try again later.</p>';
+}
+function newChat() {
+  if (busy) return;
+  LIVE.length = 0;
+  document.getElementById("live").innerHTML = "";
+  document.getElementById("suggest").hidden = false;
+  document.getElementById("new-chat").hidden = true;
+  document.getElementById("message").focus();
 }
 
 // =====================================================================================
@@ -1550,7 +1511,6 @@ showDecision("Easy run", "7:00–7:40 AM · 2 miles",
   "Planned 6:42 AM · 12 tools · claude-haiku-5-5");
 drawAgenda();
 drawProfile();
-drawSampleChat();
 
 function wire(groupId, key, draw) {
   const group = document.getElementById(groupId);
@@ -1567,6 +1527,7 @@ drawWeek("this");
 drawTrends(30);
 
 document.getElementById("plan-btn").addEventListener("click", planMyDay);
+document.getElementById("new-chat").addEventListener("click", newChat);
 document.getElementById("suggest").innerHTML = SUGGESTIONS.map(([icon, text]) =>
   `<button type="button" data-text="${esc(text)}"><span class="icon">${icon}</span>${esc(text)}</button>`).join("");
 document.getElementById("suggest").addEventListener("click", event => {
