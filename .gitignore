@@ -1,5 +1,6 @@
 # --- Secrets: NEVER put these on GitHub ---
 .streamlit/secrets.toml
+.streamlit/secrets-cloud.toml
 .env
 
 # --- Python's virtual environment and cache files (big, and rebuilt automatically) ---
