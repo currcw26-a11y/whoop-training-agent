@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import streamlit as st
 from cryptography.fernet import Fernet
+from postgrest.exceptions import APIError
 from supabase import create_client
 
 
@@ -250,6 +251,28 @@ def get_coach_notes(email):
 
 def save_coach_notes(email, notes):
     _client().table("profiles").update({"coach_notes": "\n".join(notes) or None}).eq("email", email).execute()
+
+
+# ---------- The morning check-in ----------
+# How the person feels each morning (energy, stress, soreness, sleep quality, 1-5) and any pain.
+
+def get_checkins(email, days=60):
+    """The person's check-ins for the last `days` days, newest first. None if the checkins table
+    hasn't been made yet (run the bottom of schema.sql in Supabase)."""
+    since = (date.today() - timedelta(days=days)).isoformat()
+    try:
+        return (
+            _client().table("checkins").select("*")
+            .eq("email", email).gte("date", since)
+            .order("date", desc=True).execute().data
+        )
+    except APIError:
+        return None
+
+
+def save_checkin(row):
+    """Save today's check-in. Checking in again the same day replaces it."""
+    _client().table("checkins").upsert(row).execute()
 
 
 def count_agent_runs(email=None):

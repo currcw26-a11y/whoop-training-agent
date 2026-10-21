@@ -39,6 +39,10 @@ RUNS_PER_SITE_PER_DAY = 150
 WAKE_BEFORE_EVENT_MINUTES = 60    # time to get ready and get to class
 WAKE_BEFORE_WORKOUT_MINUTES = 15  # a morning run only needs shoes and a glass of water
 DEFAULT_WAKE_MINUTES = 7 * 60 + 30  # 7:30 AM, as minutes after midnight
+# Rule S4: caffeine and hard workouts before bed (Gardiner et al. 2023; Frimpong et al. 2021).
+COFFEE_HOURS_BEFORE_BED = 9          # a cup of coffee (about 100 mg)
+ENERGY_DRINK_HOURS_BEFORE_BED = 13   # energy drinks and pre-workout (about 200 mg)
+HARD_WORKOUT_HOURS_BEFORE_BED = 2    # hard workouts should be over by then; easy ones are fine
 
 # The coach remembers up to this many short notes about each person (injuries, preferences...).
 MAX_COACH_NOTES = 25

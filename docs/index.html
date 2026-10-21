@@ -330,17 +330,6 @@ th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--bo
 th:first-child, td:first-child { text-align: left; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 
-/* ---------- Insights ---------- */
-.insights { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 1000px) { .insights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .insights { grid-template-columns: minmax(0, 1fr); } }
-.insight { display: flex; flex-direction: column; }
-.insight .k { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 6px; align-items: center; }
-.insight .k .icon { font-size: 17px; color: var(--s1); vertical-align: 0; }
-.insight .big { font-size: 28px; font-weight: 700; letter-spacing: -0.035em; margin-top: 8px; line-height: 1.15; }
-.insight p { margin: 6px 0 0; color: var(--text-2); font-size: 13.5px; }
-.insight .count { margin-top: auto; padding-top: 10px; font-size: 12px; color: var(--muted); }
-
 /* ---------- Ask the coach ---------- */
 .title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .intro { color: var(--text-2); font-size: 15px; line-height: 1.55; margin: 12px 0 22px; max-width: 620px; }
@@ -413,6 +402,139 @@ form.composer:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--s1) 
 .err { color: var(--bad-text); }
 .agenda li.suggested .e { border-left-style: dashed; }
 
+/* ---------- Research upgrades: rule chips, body check, check-in, sleep regularity, patterns ---------- */
+:root { --warn-text: #8a5a00; --warn-chip: rgba(250, 178, 25, 0.16); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --warn-text: #fab219; --warn-chip: rgba(250, 178, 25, 0.14); } }
+:root[data-theme="dark"] { --warn-text: #fab219; --warn-chip: rgba(250, 178, 25, 0.14); }
+.rule {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.45; padding: 0 6px;
+  margin-left: 5px; border-radius: 6px; vertical-align: 1px; cursor: help; color: var(--s1); background: var(--s1-tint);
+}
+.rule-line { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: 12px 0 0; }
+.rule-line .rule { margin: 0 5px 0 0; }
+.rule-line .rule + .rule, .rule-line .rule ~ .rule { margin-left: 8px; }
+details.rules-used { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; padding: 8px 13px; }
+details.rules-used summary { font-size: 13px; color: var(--text-2); gap: 3px; flex-wrap: wrap; }
+details.rules-used summary .icon:first-child { font-size: 17px; color: var(--s1); margin-right: 3px; }
+details.rules-used[open] summary { margin-bottom: 8px; }
+.ru { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; font-size: 13px; color: var(--text-2); line-height: 1.45; }
+.ru + .ru { margin-top: 7px; }
+.ru .rule { margin: 1px 0 0; justify-self: start; align-self: start; }
+.ru b { color: var(--text); font-weight: 600; }
+.ru .src { color: var(--muted); font-style: italic; }
+.limits { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; padding: 10px 13px; border-radius: 12px; background: var(--raised); font-size: 13.5px; color: var(--text-2); line-height: 1.5; }
+.limits .icon { font-size: 18px; color: var(--s1); vertical-align: 0; margin-top: 1px; }
+.limits b { color: var(--text); font-weight: 600; }
+.badge.spike { background: var(--warn-chip); color: var(--warn-text); }
+.seg.small button { padding: 6px 11px; font-size: 13px; }
+.card-top { flex-wrap: wrap; }
+/* Body check */
+.bc-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; font-size: 14.5px; padding: 5px 12px 5px 9px; border-radius: 999px; }
+.status .icon { font-size: 19px; vertical-align: 0; }
+.status.good { color: var(--good-text); background: var(--good-chip); }
+.status.warn { color: var(--warn-text); background: var(--warn-chip); }
+.status.bad { color: var(--bad-text); background: var(--bad-chip); }
+.bc-count { font-size: 12.5px; color: var(--muted); }
+.bc-msg { color: var(--text-2); font-size: 14px; line-height: 1.5; margin: 10px 0 14px; }
+.gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1000px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gauge { background: var(--raised); border-radius: 14px; padding: 12px 13px 10px; min-width: 0; }
+.g-name { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.g-val { font-size: 22px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.3; }
+.g-val small { font-size: 12.5px; font-weight: 500; color: var(--text-2); letter-spacing: 0; margin-left: 3px; }
+.g-track { position: relative; height: 8px; border-radius: 999px; background: var(--grid); margin: 9px 0 7px; }
+.g-band { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: color-mix(in srgb, var(--good) 38%, transparent); }
+.g-dot { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--raised); }
+.gauge.off .g-dot { background: var(--bad); }
+.g-note { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gauge.off .g-note { color: var(--bad-text); font-weight: 600; }
+.trends7 { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--border); }
+.trends7 > div { display: grid; }
+.trends7 .k { font-size: 12px; color: var(--muted); font-weight: 500; }
+.trends7 b { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+.trends7 .n { font-size: 12px; color: var(--good-text); }
+.trends7 .n.bad { color: var(--bad-text); }
+.trends7 .rule { margin-left: auto; }
+.example-note { margin: 12px 0 0; font-size: 13px; color: var(--text-2); background: var(--s1-tint); border-radius: 10px; padding: 8px 12px; }
+/* Check-in */
+.ck-form { display: grid; gap: 9px; margin-top: 12px; }
+.ck-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; }
+.ck-row b { font-size: 14px; display: block; }
+.ck-row small { font-size: 11.5px; color: var(--muted); }
+.ck-row .seg button { padding: 6px 12px; }
+.ck-pain { display: grid; gap: 8px; margin-top: 4px; }
+.ck-pain label { font-size: 13.5px; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.ck-pain input[type="range"] { flex: 1; accent-color: var(--s1); }
+.ck-pain select { font: 13.5px Inter, system-ui, sans-serif; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--card); color: var(--text); }
+.ck-pain input[type="checkbox"] { accent-color: var(--s1); width: 15px; height: 15px; }
+.ck-items { font-size: 14.5px; color: var(--text-2); margin-top: 12px; }
+.ck-items b { color: var(--text); font-size: 16px; }
+.ck-score { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.light { display: flex; gap: 12px; align-items: flex-start; margin: 14px 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--raised); }
+.light b { font-weight: 650; }
+.light p { margin: 3px 0 0; font-size: 13.5px; color: var(--text-2); line-height: 1.45; }
+.lamps { display: flex; flex-direction: column; gap: 4px; padding: 5px; border-radius: 10px; background: var(--card); flex: none; margin-top: 2px; }
+.lamps i { width: 11px; height: 11px; border-radius: 50%; background: var(--grid); }
+.lamps i.green.on { background: var(--good); }
+.lamps i.yellow.on { background: var(--warn); }
+.lamps i.red.on { background: var(--bad); }
+.light.red { box-shadow: inset 3px 0 0 var(--bad); }
+.light.yellow { box-shadow: inset 3px 0 0 var(--warn); }
+/* Sleep cutoffs, sleep regularity, and the sleep barcode */
+.sl-cut { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.sl-cut > div { background: var(--raised); border-radius: 12px; padding: 9px 11px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 7px; align-items: center; }
+.sl-cut .icon { grid-row: span 2; font-size: 18px; color: var(--s4); vertical-align: 0; }
+.sl-cut b { font-size: 14.5px; font-weight: 650; white-space: nowrap; }
+.sl-cut small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.regular { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .card.regular { grid-template-columns: minmax(0, 1fr); gap: 22px; } }
+.sri .k { font-size: 13px; color: var(--text-2); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.sri .k .icon { font-size: 17px; vertical-align: 0; color: var(--s1); }
+.sri .big { font-size: 42px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; margin: 3px 0 5px; }
+.sri .big small { font-size: 16px; font-weight: 600; color: var(--text-2); letter-spacing: 0; margin-left: 3px; }
+.sri p { color: var(--text-2); font-size: 14px; line-height: 1.5; margin: 10px 0 0; }
+.barcode { display: flex; flex-direction: column; gap: 3px; }
+.bc-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 13px; align-items: center; }
+.bc-row .d { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.bc-track { position: relative; height: 13px; background: var(--raised); border-radius: 3px; }
+.bc-track i { position: absolute; top: 0; bottom: 0; background: var(--s1); border-radius: 2px; }
+.bc-head .bc-track { background: none; height: 16px; }
+.bc-axis span { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.barcode .legend { margin-top: 8px; }
+/* What moves your recovery */
+.pat-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.5fr) minmax(0, 1.35fr); gap: 18px; align-items: center; padding: 11px 0; }
+.pat-row + .pat-row { border-top: 1px solid var(--border); }
+.pat-head { padding: 0 0 3px; }
+.pat-q b { display: block; font-weight: 600; font-size: 14.5px; }
+.pat-q span { font-size: 12.5px; color: var(--muted); }
+.pat-plot { position: relative; height: 22px; }
+.pat-axis { height: 14px; }
+.pat-axis span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); }
+.pat-plot .zero { position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 1px dashed var(--muted); opacity: 0.6; }
+.pat-plot .whisker { position: absolute; top: 50%; height: 4px; margin-top: -2px; border-radius: 999px; background: var(--s1); opacity: 0.35; }
+.pat-plot .pdot { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--s1); box-shadow: 0 0 0 2px var(--card); }
+.pat-plot .whisker.none, .pat-plot .pdot.none { background: var(--muted); }
+.pat-plot .pdot.possible { background: var(--card); box-shadow: inset 0 0 0 2.5px var(--s1); }
+.pat-res { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 12.5px; color: var(--muted); }
+.pat-res b { color: var(--text); font-size: 15px; font-weight: 650; }
+.pat-res > span:last-child { flex-basis: 100%; }
+.pl { font-size: 11.5px; font-weight: 650; padding: 1px 8px; border-radius: 999px; background: var(--raised); color: var(--text-2); }
+.pl.consistent { background: var(--s1-tint); color: var(--s1); }
+.pl.possible { color: var(--s1); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--s1) 40%, transparent); }
+.pat-row.grey .pat-q b { color: var(--text-2); }
+.pat-foot { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.pat-foot p { margin: 6px 0 0; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.pat-foot p i { color: var(--muted); }
+.pat-foot .rule-line { color: var(--muted); font-size: 12.5px; }
+@media (max-width: 760px) {
+  .pat-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pat-row .pat-res { grid-column: 1 / -1; }
+  .pat-head { display: none; }
+}
+.step.check .icon { color: var(--good); }
+.step.caught .icon { color: var(--warn-text); }
+
 /* ---------- Footer ---------- */
 footer { border-top: 1px solid var(--border); padding: 26px 0 40px; color: var(--text-2); font-size: 13.5px; }
 footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -459,6 +581,25 @@ footer p { margin: 0; max-width: 640px; }
   <div class="row coach-row">
     <div class="card">
       <div class="card-top">
+        <div class="eyebrow"><span class="icon">monitor_heart</span>Body check · 4 signals vs. your normal</div>
+        <div class="seg small" id="example-seg" role="group" aria-label="Show an example">
+          <button data-example="off" aria-pressed="true">Clive's data</button><button data-example="sick">Example: getting sick</button>
+        </div>
+      </div>
+      <div id="body-check"></div>
+    </div>
+    <div class="card">
+      <div class="card-top">
+        <div class="eyebrow"><span class="icon">self_improvement</span>Morning check-in · 10 seconds</div>
+        <div class="meta" id="checkin-meta"></div>
+      </div>
+      <div id="checkin"></div>
+    </div>
+  </div>
+
+  <div class="row coach-row">
+    <div class="card">
+      <div class="card-top">
         <div class="eyebrow"><span class="icon">auto_awesome</span>Today's workout</div>
         <div class="meta" id="plan-meta"></div>
       </div>
@@ -466,6 +607,8 @@ footer p { margin: 0; max-width: 640px; }
       <div class="when" id="when"><span class="icon">schedule</span><span id="when-text"></span></div>
       <p class="why" id="why"></p>
       <div class="badges" id="badges"></div>
+      <div id="rules-used"></div>
+      <div class="limits" id="limits"></div>
       <div class="actions">
         <button class="btn primary" id="plan-btn" type="button"><span class="icon">auto_awesome</span>Plan my day</button>
         <a class="btn" href="#coach"><span class="icon">forum</span>Ask the coach</a>
@@ -488,6 +631,7 @@ footer p { margin: 0; max-width: 640px; }
   <section>
     <div class="eyebrow"><span class="icon">bedtime</span>Sleep plan · tonight and the week ahead</div>
     <div class="card sleep" id="sleep"></div>
+    <div class="card regular" id="regular"></div>
   </section>
 
   <section>
@@ -554,6 +698,7 @@ footer p { margin: 0; max-width: 640px; }
         </div>
         <svg class="chart" id="miles-chart" viewBox="0 0 520 210" role="img" aria-label="Bar chart of running miles per week, with planned miles for this week and next"></svg>
         <div class="note"><span class="icon">check_circle</span><span id="run-note"></span></div>
+        <div class="note spike-note"><span class="icon">speed</span><span id="spike-note"></span></div>
       </div>
     </div>
 
@@ -600,8 +745,8 @@ footer p { margin: 0; max-width: 640px; }
   </section>
 
   <section>
-    <div class="eyebrow"><span class="icon">lightbulb</span>Insights · patterns in your own data</div>
-    <div class="insights" id="insights"></div>
+    <div class="eyebrow"><span class="icon">lightbulb</span>What moves your recovery · your last 90 days</div>
+    <div class="card" id="patterns"></div>
     <details class="table card">
       <summary><span class="icon">table_chart</span>See every number as a table<span class="icon chev">expand_more</span></summary>
       <div class="table-scroll"><table id="table"></table></div>
@@ -753,25 +898,34 @@ DAYS.forEach(d => {
   d.wake = round(d.bed + d.sleep + d.awake, 2);
 });
 DAYS[DAYS.length - 1].bed = 5.2;  // last night: in bed by about 11:10 PM
+// Breathing rate and skin temperature for the check engine light (their own random numbers, so
+// nothing above changes), and a small dip in recovery the morning after club tennis (Tue and Thu).
+const bodyRand = seeded(41);
+const bodyGauss = () => { let u = 0, v = 0; while (!u) u = bodyRand(); while (!v) v = bodyRand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+DAYS.forEach(d => { d.resp = round(14.6 + 0.3 * bodyGauss(), 1); d.skin = round(33.6 + 0.17 * bodyGauss(), 2); });
+DAYS.slice(1, EARLIER.length).forEach((d, i) => { if ([1, 3].includes(weekdayIndex(DAYS[i].date))) d.recovery = Math.max(22, d.recovery - 7); });
 const TODAY = DAYS[DAYS.length - 1], YESTERDAY = DAYS[DAYS.length - 2];
+Object.assign(TODAY, { resp: 14.6, skin: 33.62 });  // a normal morning
 const avg = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0) / rows.length;
 const sd = (rows, key) => { const m = avg(rows, key); return Math.sqrt(rows.reduce((s, r) => s + (r[key] - m) ** 2, 0) / Math.max(1, rows.length - 1)); };
 
-// Your normal range (the same rule as personal.py): this week's average vs. the 60 days before, ± half a standard deviation.
+// Your normal range (rule R2, the same as personal.py): this week's average vs. the 60 days before,
+// ± half a standard deviation. HRV is averaged on a log scale, like the HRV studies.
 function personalTrend(key) {
-  const week = DAYS.slice(-7), before = DAYS.slice(-67, -7);
-  const middle = avg(before, key), spread = 0.5 * sd(before, key), average = avg(week, key);
+  const log = key === "hrv", f = log ? Math.log : v => v, back = log ? Math.exp : v => v;
+  const week = DAYS.slice(-7).map(d => ({ v: f(d[key]) })), before = DAYS.slice(-67, -7).map(d => ({ v: f(d[key]) }));
+  const middle = avg(before, "v"), spread = 0.5 * sd(before, "v"), average = avg(week, "v");
   const status = average < middle - spread ? "below" : average > middle + spread ? "above" : "within";
-  return { average: round(average, 1), low: Math.round(middle - spread), high: Math.round(middle + spread), status };
+  return { average: round(back(average), 1), low: Math.round(back(middle - spread)), high: Math.round(back(middle + spread)), status };
 }
-const HRV_TREND = personalTrend("hrv"), RHR_TREND = personalTrend("rhr");
+let HRV_TREND = personalTrend("hrv"), RHR_TREND = personalTrend("rhr");
 
 // ---------- Clive's coaching profile and what the coach remembers ----------
 const GOAL_DATE = (() => { let d = addDays(TODAY_ISO, 49); while (weekdayIndex(d) !== 6) d = addDays(d, 1); return d; })();  // a Sunday ~7 weeks out
 const PROFILE = { goal: "Run my first 10K", goal_date: GOAL_DATE, experience: "2-3 miles, 3 times a week, plus club tennis",
                   run_times: "Early morning (6-9am), Afternoon (3-6pm)" };
 const NOTES = [
-  { when: short(addDays(TODAY_ISO, -4)), text: "Left shin felt tight after the 3-mile long run; keep long runs at 3.5 miles for now." },
+  { when: short(addDays(TODAY_ISO, -4)), text: "Left shin felt tight after a long run; keep long runs at 3.5 miles for now." },
   { when: short(addDays(TODAY_ISO, -3)), text: "Plays club tennis Tuesdays and Thursdays, 4–5:30 PM." },
   { when: short(addDays(TODAY_ISO, -3)), text: "Likes to run early, before 9:30 classes." },
 ];
@@ -798,9 +952,14 @@ const SCHEDULE = [
   { events: [C("14:00", "16:00", "Study: BIO 150", "personal"), C("18:00", "18:30", "Call home", "personal")], workout: "Easy bike, 30 min", at: ["10:00", "10:30"] },
 ];
 // The plan builds slowly: last week's long run was shorter, and next week's Monday run is a bit longer.
-const WEEK_CHANGES = { last: { 5: "Long run/walk, 3 miles" }, next: { 0: "Easy run, 2.5 miles" } };
+const WEEK_CHANGES = { last: { 5: "Long run/walk, 3.2 miles" }, next: { 0: "Easy run, 2.5 miles" } };
 // Running miles in the 10 weeks before last week, oldest first (the later weeks come from the plan).
 const PAST_WEEKLY_MILES = [3.0, 3.0, 3.5, 3.5, 4.0, 4.0, 4.0, 4.5, 5.0, 6.0];
+// The runs in the 3 weeks before last week (days from this Monday, miles), for the spike guard.
+const PAST_RUNS = [[-28, 1.25], [-26, 1.25], [-23, 2.0], [-21, 1.5], [-19, 1.5], [-16, 2.0], [-14, 1.5], [-12, 1.5], [-9, 3.0]]
+  .map(([n, miles]) => ({ date: addDays(THIS_MONDAY, n), miles }));
+// Past exams (days from today), for "the morning after an exam".
+const EXAM_HISTORY = [-12, -33, -54].map(n => addDays(TODAY_ISO, n));
 const CALENDAR_NAMES = { classes: "WFU Classes", personal: "Tennis & personal", coach: "Training Coach" };
 const KIND_COLORS = { classes: "var(--s1)", personal: "var(--s3)", coach: "var(--s2)" };
 
@@ -946,10 +1105,14 @@ function planNight(night, need) {
     if (neededBy < relaxed) { wake = neededBy; setByFirst = true; }
   }
   wake = Math.floor(wake / 5) * 5;
+  need = clamp(need, 7, 10);  // rule S3: at least 7 hours
   const inBed = need / EFFICIENCY * 60;
   const bed = Math.floor((wake + 1440 - inBed) / 5) * 5;  // minutes after the night's midnight
+  const by15 = minutes => Math.floor(minutes / 15) * 15;
+  // Rule S4: coffee 9 hours before bed, energy drinks 13 hours, hard workouts over 2 hours before.
   return { night, first, wake, bed, setByFirst, need, inBed: Math.round(inBed / 5) * 5,
-           caffeine: Math.floor((bed - 360) / 30) * 30, earlier: Math.round((USUAL_BED - bed) / 5) * 5 };
+           caffeine: by15(bed - 9 * 60), energy: by15(bed - 13 * 60), hardEnd: by15(bed - 2 * 60),
+           earlier: Math.round((USUAL_BED - bed) / 5) * 5 };
 }
 let NIGHTS = [], TONIGHT = null;
 function drawSleep() {
@@ -966,8 +1129,12 @@ function drawSleep() {
       <div class="sl-time"><div class="k"><span class="icon">alarm</span>Wake up</div><div class="big">${big(t.wake)}</div></div></div>
     <p class="sl-why">${why}${daysFromToday(EXAM_DATE) === 1 ? " Your CHM 111 midterm is at 10:00 tomorrow, so tonight's sleep matters." : ""}
       <span class="sl-math">${t.need} h needed ÷ ${Math.round(EFFICIENCY * 100)}% sleep efficiency = ${duration(t.inBed)} in bed</span></p>
-    <div class="badges"><span class="badge"><span class="icon">coffee</span>No caffeine after ${clockMin(t.caffeine)}</span>
-      <span class="badge"><span class="icon">schedule</span>${duration(Math.abs(t.earlier))} ${t.earlier > 0 ? "earlier" : "later"} than usual</span></div></div>`;
+    <div class="sl-cut">
+      <div><span class="icon">coffee</span><b>${clockMin(t.caffeine)}</b><small>Last coffee</small></div>
+      <div><span class="icon">bolt</span><b>${clockMin(t.energy)}</b><small>Energy drinks</small></div>
+      <div><span class="icon">fitness_center</span><b>${clockMin(t.hardEnd)}</b><small title="Hard workouts done by">Hard workouts</small></div></div>
+    ${Math.abs(t.earlier) >= 15 ? `<div class="badges"><span class="badge"><span class="icon">schedule</span>${duration(Math.abs(t.earlier))} ${t.earlier > 0 ? "earlier" : "later"} than usual</span></div>` : ""}
+    <p class="rule-line">${ruleChip("S3")} At least 7 hours of sleep ${ruleChip("S4")} Coffee 9 h, energy drinks 13 h, and hard workouts 2 h before bed</p></div>`;
   // The week ahead, on a scale from 8 PM to 1 PM.
   const span = 17 * 60, at = minutesAfterMidnight => 100 * (minutesAfterMidnight - 20 * 60) / span;
   const axis = [21, 24, 27, 30, 33, 36].map(h =>
@@ -987,9 +1154,241 @@ function drawSleep() {
 }
 
 // =====================================================================================
+// The rules engine (the same rules as facts.py and patterns.py in the real app). Code decides
+// today's limits from the data; the live coach explains them and cites each rule by its ID.
+// =====================================================================================
+const RULES = {
+  R1: ["Check engine light", "If 2+ of resting heart rate, breathing rate, skin temperature, and HRV are outside your normal range, today is easy; 3+, or 2+ two days in a row, means rest.", "Mishra et al. 2020; Miller et al. 2020; Mason et al. 2022"],
+  R2: ["Readiness trend", "HRV and resting heart rate are judged by their 7-day average against your normal range: HRV below and resting HR above means easy days until they're back. A red recovery means easy; red on 2 of the last 3 days means rest.", "Plews et al. 2013; Vesterinen et al. 2016"],
+  R3: ["Morning check-in", "How you say you feel counts: a low check-in plus any body signal that's off means an easy day.", "Saw, Main & Gastin 2016 (review of 56 studies)"],
+  R4: ["Short sleep", "After 6 hours of sleep or less, afternoon and evening workouts stay easy and morning ones moderate.", "Craven et al. 2022 (meta-analysis)"],
+  L1: ["Spike guard", "No run longer than 110% of your longest run in the 30 days before it.", "Frandsen et al. 2025 (5,205 runners)"],
+  L3: ["Weekly build", "Weekly running grows no more than about 30% over two weeks. 10% a week is a comfortable default, not a proven rule.", "Nielsen et al. 2014; Buist et al. 2008"],
+  B1: ["Mostly easy", "About 80% of training time easy (heart-rate zones 1-2), at least 2 rest or cross-training days a week, and at most one faster session a week for newer runners, only on a good day. Run/walk is fine.", "Muñoz et al. 2014; Hottenrott et al. 2016"],
+  B2: ["Pain check", "Pain on one spot of the bone, pain at rest or at night, pain getting worse, or 5+/10 means no running and see an athletic trainer; 3-4/10, or pain still there the morning after a run, means cross-training at the same effort until it's gone.", "Warden et al. 2014, 2021"],
+  S1: ["Steady sleep", "Keep bedtimes and wake-up times steady; students with more regular sleep earned better grades.", "Phillips et al. 2017; Sletten et al. 2023"],
+  S3: ["Sleep target", "At least 7 hours of sleep, more when WHOOP says you need it.", "Watson et al. 2015; Walsh et al. 2021"],
+  S4: ["Caffeine and late workouts", "Last coffee 9 hours before bedtime, energy drinks or pre-workout 13 hours before, and hard workouts over at least 2 hours before bedtime.", "Gardiner et al. 2023; Frimpong et al. 2021"],
+  A2: ["Exams", "No hard session within 2 days before an exam and nothing in the 2 hours before it; keep wake-up times steady and protect sleep the whole week before.", "Okano et al. 2019; Mann et al. 2016"],
+  W1: ["Weather", "Move runs away from thunderstorms, heavy rain, ice, and feels-like temperatures above about 90°F or below about 20°F, or go indoors.", "Roberts et al. 2021 (ACSM); Walsh et al. 2013 (NATA)"],
+  P3: ["Your patterns", "A consistent pattern in your own data can make a day easier, never harder.", "Kravitz & Duan 2014 (n-of-1 guide)"],
+};
+const LEVELS = ["rest", "easy", "moderate", "hard"];
+const median = list => { const s = list.slice().sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const signed = (v, digits = 0) => { const t = Math.abs(v).toFixed(digits); return Number(t) === 0 ? `+${t}` : `${v > 0 ? "+" : "−"}${t}`; };
+const points = v => { const n = Math.round(v); return n === 0 ? "0" : n > 0 ? `+${n}` : `−${-n}`; };
+
+// ---------- R1: the check engine light (4 body signals vs. the 28 mornings before) ----------
+const SIGNALS = [["rhr", "Resting HR", "bpm", 1, 3.0], ["resp", "Breathing rate", "/min", 1, 1.0],
+                 ["skin", "Skin temp", "°C", 1, 0.5], ["hrv", "HRV", "ms", -1, 0.10]];
+function signalOn(i, [key, name, unit, sign, smallest]) {
+  const base = DAYS.slice(Math.max(0, i - 28), i).map(d => d[key]);
+  if (base.length < 14) return { name, learning: true, nights: base.length };
+  const log = key === "hrv", value = DAYS[i][key], f = log ? Math.log : v => v, show = log ? Math.exp : v => v;
+  const x = f(value), b = base.map(f), middle = median(b);
+  const spread = median(b.map(v => Math.abs(v - middle))) * 1.4826;
+  const z = spread > 0 ? (x - middle) / spread : 0, width = Math.max(2 * spread, smallest);
+  const digits = key === "rhr" || key === "hrv" ? 0 : 1, tidy = v => round(v, digits);
+  const change = log ? `${signed(100 * (value / show(middle) - 1))}%` : `${signed(value - show(middle), digits)}${unit === "/min" ? "/min" : ` ${unit}`}`;
+  return { name, unit, value: tidy(value), normal: tidy(show(middle)), low: tidy(show(middle - width)), high: tidy(show(middle + width)),
+           change, off: sign * z >= 2 && sign * (x - middle) >= smallest, learning: false };
+}
+function checkEngine() {
+  const i = DAYS.length - 1;
+  const today = SIGNALS.map(s => signalOn(i, s)), yesterday = SIGNALS.map(s => signalOn(i - 1, s));
+  const known = today.filter(s => !s.learning), off = known.filter(s => s.off);
+  const twoDays = off.length >= 2 && yesterday.filter(s => !s.learning && s.off).length >= 2;
+  const alert = off.length >= 3 || twoDays ? "rest" : off.length === 2 ? "easy" : "ok";
+  const details = off.map(s => `${s.name === "HRV" ? "HRV" : s.name === "Resting HR" ? "resting HR" : s.name.toLowerCase()} ${s.change}`).join(", ");
+  let message;
+  if (alert === "ok" && !off.length) message = `All ${known.length} body signals are in your normal range.`;
+  else if (alert === "ok") message = `1 of ${known.length} body signals is outside your normal range (${details}). One on its own is usually noise, like a late meal, a hot room, or alcohol, so it doesn't change the plan.`;
+  else message = `${off.length} of your ${known.length} body signals are outside your normal range${twoDays && off.length < 3 ? " for the second day in a row" : " today"} (${details}). ` +
+    `That pattern often shows up when your body is fighting something, so today is ${alert === "rest" ? "a rest day" : "easy"}. If you feel sick or it lasts 3+ days, check in with a doctor.`;
+  return { alert, signals: today, off: off.length, of: known.length, twoDays, message };
+}
+
+// ---------- R3 and B2: the morning check-in (Clive checked in at 6:40 AM) ----------
+const CHECKIN = { energy: 4, stress: 3, soreness: 2, sleep_quality: 4, pain: 0, where: "Left shin", one_spot: false, at_rest: false, worse: false, at: "6:40 AM" };
+const CHECKIN_QUESTIONS = [["energy", "Energy", "drained", "great"], ["stress", "Stress", "calm", "high"], ["soreness", "Soreness", "none", "a lot"], ["sleep_quality", "Sleep", "awful", "great"]];
+function readCheckin(c) {
+  const score = c.energy + (6 - c.stress) + (6 - c.soreness) + c.sleep_quality, low = score <= 10;  // fewer than 14 check-ins: a fixed cut-off
+  return { score, low, good: !low && score >= 14 && c.energy >= 3 };
+}
+function painLight(c, ranYesterday) {
+  const place = c.where ? `Your ${c.where.toLowerCase()}` : "The pain";
+  const warnings = [[c.one_spot, "pain you can press on one spot of the bone"], [c.at_rest, "pain at rest or at night"],
+                    [c.worse, "pain that got worse over your last 2 runs"], [c.pain >= 5, `${c.pain}/10 pain`]].filter(w => w[0] && c.pain);
+  if (warnings.length) return { light: "red", running: false, message: `${warnings[0][1][0].toUpperCase()}${warnings[0][1].slice(1)} is a warning sign worth getting checked. Running is paused; an athletic trainer can help you decide when to restart.` };
+  if (c.pain >= 3 || (c.pain >= 1 && ranYesterday)) return { light: "yellow", running: false,
+    message: `${c.pain >= 3 ? `${place} is ${c.pain}/10 this morning` : `${place} is still there (${c.pain}/10) the morning after a run`}, so today's run becomes easy cross-training, like cycling, at the same effort. We'll check again tomorrow.` };
+  if (c.pain) return { light: "green", running: true, message: `${place} is ${c.pain}/10 with no warning signs, so the plan stays. Tell the coach if it's still there tomorrow.` };
+  return { light: "green", running: true, message: "Nothing to change in the plan." };
+}
+
+// ---------- L1: the spike guard ----------
+const doneRuns = () => PAST_RUNS.concat(ALL_DAYS.filter(d => d.date < TODAY_ISO && runMiles(d)).map(d => ({ date: d.date, miles: runMiles(d) })));
+function runLimit(day, runs = doneRuns()) {
+  const window = runs.filter(r => r.date < day && r.date >= addDays(day, -30));
+  if (!window.length) return { longest: null, limit: 2.0, exact: 2.0, startingBack: true };
+  const longest = window.reduce((a, b) => (b.miles > a.miles ? b : a));
+  return { longest: longest.miles, on: longest.date, limit: Math.floor(1.1 * longest.miles * 10 + 1e-6) / 10, exact: 1.1 * longest.miles };
+}
+const spikePercent = (miles, limit) => (miles && limit.longest ? Math.round(100 * miles / limit.longest) : null);
+
+// ---------- P1 to P3: what moves your recovery (five fixed questions, honest ranges) ----------
+const PATTERN_QUESTIONS = [
+  ["slept7", "7+ hours of sleep", "vs. under 7 hours", ["nights with 7+ hours", "nights under 7 hours"], "After nights with 7+ hours of sleep", "than after shorter nights",
+   ["after nights with 7+ hours of sleep", "after short nights, and last night was short"]],
+  ["early_bed", "Asleep before midnight", "vs. after midnight", ["nights before midnight", "nights after midnight"], "After nights you fell asleep before midnight", "than after later nights",
+   ["after nights before midnight", "after late nights, and last night was late"]],
+  ["hard_yday", "The day after a hard workout", "vs. other days", ["hard days", "easier days"], "The morning after a hard workout", "than on other days",
+   ["the day after a hard workout", "on days that don't follow a hard workout"]],
+  ["sport_yday", "The day after tennis", "vs. other days", ["tennis days", "days without tennis"], "The morning after tennis", "than on other days",
+   ["the day after tennis", "on days that don't follow tennis"]],
+  ["exam_yday", "The day after an exam", "vs. other days", ["exam days", "days without an exam"], "The morning after an exam", "than on other days",
+   ["the day after an exam", "on days that don't follow an exam"]],
+];
+function recoveryPatterns() {
+  const exposure = {
+    slept7: d => (d.sleep >= 7 ? 1 : 0), early_bed: d => (d.bed < 6 ? 1 : 0),
+    hard_yday: (d, i) => (DAYS[i - 1].strain >= 14 ? 1 : 0), sport_yday: (d, i) => ([1, 3].includes(weekdayIndex(DAYS[i - 1].date)) ? 1 : 0),
+    exam_yday: (d, i) => (EXAM_HISTORY.includes(DAYS[i - 1].date) ? 1 : 0),
+  };
+  // Recovery compared with its own 28-day trend, so getting fitter doesn't look like an effect.
+  const vsTrend = DAYS.map((d, i) => (i < 13 ? null : d.recovery - median(DAYS.slice(Math.max(0, i - 27), i + 1).map(x => x.recovery))));
+  return PATTERN_QUESTIONS.map(([key, question, versus, units, start, compared, when], q) => {
+    const rows = DAYS.map((d, i) => (i >= 13 ? { yes: exposure[key](d, i) === 1, y: vsTrend[i], sleep: d.sleep } : null)).filter(Boolean);
+    const yes = rows.filter(r => r.yes), no = rows.filter(r => !r.yes);
+    const row = { key, question, versus, label: "Not enough data yet", effect: null };
+    if (yes.length < 8 || no.length < 8) {
+      const [count, unit] = yes.length <= no.length ? [yes.length, units[0]] : [no.length, units[1]];
+      return { ...row, detail: `${Math.min(count, 8)} of 8 ${unit}` };
+    }
+    const mean = list => list.reduce((s, r) => s + r.y, 0) / list.length;
+    const effect = mean(yes) - mean(no), n = rows.length, rng = seeded(100 + q), boots = [];
+    for (let b = 0; b < 2000; b++) {  // a moving-block bootstrap: resample whole weeks, 2,000 times
+      let sumYes = 0, countYes = 0, sumNo = 0, countNo = 0, taken = 0;
+      while (taken < n) {
+        const s = Math.floor(rng() * (n - 6));
+        for (let k = s; k < s + 7 && taken < n; k++, taken++) { if (rows[k].yes) { sumYes += rows[k].y; countYes++; } else { sumNo += rows[k].y; countNo++; } }
+      }
+      if (countYes && countNo) boots.push(sumYes / countYes - sumNo / countNo);
+    }
+    boots.sort((a, b) => a - b);
+    const low = boots[Math.floor(0.1 * (boots.length - 1))], high = boots[Math.ceil(0.9 * (boots.length - 1))];
+    const half = list => { const a = list.filter(r => r.yes), b = list.filter(r => !r.yes); return a.length && b.length ? mean(a) - mean(b) : null; };
+    const first = half(rows.slice(0, n >> 1)), second = half(rows.slice(n >> 1));
+    const label = low <= 0 && high >= 0 ? "No clear difference yet"
+      : first !== null && second !== null && Math.sign(first) === Math.sign(effect) && Math.sign(second) === Math.sign(effect) ? "Consistent pattern" : "Possible pattern";
+    const nEff = 2 / (1 / yes.length + 1 / no.length), keep = nEff / (nEff + 10);  // shrink small samples toward "no effect"
+    const shown = effect * keep, lowS = low * keep, highS = high * keep;
+    const counts = `${yes.length} vs. ${no.length} ${key === "slept7" || key === "early_bed" ? "nights" : "days"}`;
+    const sentence = label === "No clear difference yet"
+      ? `${start}, your recovery wasn't clearly different ${compared} (likely range ${points(lowS)} to ${points(highS)} points; ${counts}).`
+      : `${start}, your recovery was about ${Math.abs(Math.round(shown))} points ${shown > 0 ? "higher" : "lower"} ${compared} (likely range ${points(lowS)} to ${points(highS)}; ${counts}). ` +
+        (label === "Consistent pattern" ? "This held in both halves of your data." : "It hasn't shown up in both halves of your data yet.");
+    let butAlso = null;
+    if (key !== "slept7") {
+      const gap = avg(yes, "sleep") - avg(no, "sleep");
+      if (Math.abs(gap) >= 0.5) butAlso = `But on those ${units[0]} you also slept ${Math.round(Math.abs(gap) * 60)} minutes ${gap > 0 ? "more" : "less"}, so sleep may be part of it.`;
+    }
+    const todayYes = exposure[key](TODAY, DAYS.length - 1) === 1, applies = todayYes === shown < 0;
+    const canMakeEasier = label === "Consistent pattern" && Math.abs(shown) >= 5;
+    return { ...row, label, effect: round(shown, 1), low: round(lowS, 1), high: round(highS, 1), detail: counts, sentence, butAlso,
+             canMakeEasier, applies, action: applies ? `Your recovery is consistently lower ${when[shown > 0 ? 1 : 0]}, so today stays easy` : null };
+  });
+}
+
+// ---------- S1: the Sleep Regularity Index ----------
+// The chance you're in the same state (asleep or awake) at any minute as 24 hours later, from -100 to 100.
+function sleepRegularity(lastIndex) {
+  const rows = DAYS.slice(Math.max(0, lastIndex - 13), lastIndex + 1);
+  if (rows.length < 7) return null;
+  const asleep = (d, minute) => minute >= (d.bed + 6) * 60 && minute < (d.wake + 6) * 60;  // minutes after noon the day before
+  let same = 0, total = 0;
+  for (let j = 0; j < rows.length - 1; j++) {
+    for (let m = 0; m < 1440; m++) { same += asleep(rows[j], m) === asleep(rows[j + 1], m) ? 1 : 0; total++; }
+  }
+  return Math.round(-100 + 200 * same / total);
+}
+
+// ---------- Today's limits, from all of the above ----------
+let EXAMPLE = null;  // "sick" while the getting-sick example is on
+function computeFacts() {
+  const engine = checkEngine(), checkin = readCheckin(CHECKIN);
+  const runs = doneRuns(), ranYesterday = runs.some(r => r.date === addDays(TODAY_ISO, -1));
+  const pain = painLight(CHECKIN, ranYesterday), patterns = recoveryPatterns();
+  let level = "hard"; const because = [];
+  const cap = (to, rule, text) => { if (LEVELS.indexOf(to) < LEVELS.indexOf(level)) level = to; because.push({ rule, cap: to, text }); };
+  if (engine.alert === "easy" || engine.alert === "rest") cap(engine.alert, "R1", `${engine.off} of ${engine.of} body signals are outside your normal range`);
+  const scores = DAYS.slice(-3).map(d => d.recovery);
+  if (scores.filter(s => s < 34).length >= 2 && scores[2] < 34) cap("rest", "R2", "Recovery has been red on 2 of the last 3 days");
+  else if (scores[2] < 34) cap("easy", "R2", `Recovery is ${scores[2]}% (red)`);
+  if (HRV_TREND.status === "below" && RHR_TREND.status === "above") cap("easy", "R2", "Your 7-day HRV is below your normal range and your resting HR is above it, a pattern linked to not coping well with recent training");
+  else if (HRV_TREND.status === "below" && !checkin.good) cap("moderate", "R2", "Your 7-day HRV is below your normal range, so a hard session waits for a good check-in");
+  if (checkin.low && (engine.off || HRV_TREND.status === "below" || RHR_TREND.status === "above")) cap("easy", "R3", `You rated your morning ${checkin.score} of 20 and a body signal is low too`);
+  let afternoon = null;
+  if (TODAY.sleep <= 6) { cap("moderate", "R4", `You slept ${TODAY.sleep} hours, and short sleep hurts afternoon workouts most`); afternoon = "easy"; }
+  if (pain.light === "red") cap("easy", "B2", "A pain warning sign means no running until an athletic trainer checks it");
+  else if (pain.light === "yellow") because.push({ rule: "B2", cap: null, text: "Pain this morning means cross-training at the same effort instead of running" });
+  const exams = [[EXAM_DATE, "CHM 111 Midterm", "10:00"], [addDays(THIS_MONDAY, 9), "BIO 150 Exam", "09:00"]].filter(([d]) => daysFromToday(d) >= 0).sort();
+  for (const [date, title] of exams) {
+    const away = daysFromToday(date);
+    if (away <= 1) { cap("easy", "A2", `${title} is ${away ? "tomorrow" : "today"}`); break; }
+    if (away === 2) { cap("moderate", "A2", `${title} is in 2 days, so no hard session`); break; }
+  }
+  for (const p of patterns) if (p.canMakeEasier && p.applies) cap("easy", "P3", p.action);
+  const spike = runLimit(TODAY_ISO, runs);
+  return { engine, checkin, pain, patterns, exams, runs, regularity: sleepRegularity(DAYS.length - 1), regularityBefore: sleepRegularity(DAYS.length - 15),
+           limits: { max: level, afternoon, running: pain.running, spike, because } };
+}
+let FACTS = null;
+
+// The facts packet the live coach gets (like facts.packet in the real app). Keys starting with _ are
+// for the server's checks and aren't shown to the coach.
+function factsPacket() {
+  const f = FACTS, l = f.limits, t = TONIGHT;
+  return {
+    limits_for_today: { max_intensity: l.max, ...(l.afternoon ? { afternoon_and_evening_max: l.afternoon } : {}), running_allowed: l.running,
+      longest_run_allowed_today: `${l.spike.limit} miles`, because: l.because.length ? l.because.map(b => `[${b.rule}] ${b.text}`) : ["Nothing limits today."] },
+    spike_guard_L1: { longest_run_last_30_days: l.spike.longest ? `${l.spike.longest} miles on ${weekday(l.spike.on)} ${short(l.spike.on)}` : null,
+      note: "update_training_plan checks every planned run against this, day by day." },
+    check_engine_light_R1: { status: f.engine.alert, signals_off: f.engine.off, of: f.engine.of, summary: f.engine.message,
+      signals: Object.fromEntries(f.engine.signals.map(s => [s.name, `${s.value} ${s.unit}, normal about ${s.normal} (${s.change})${s.off ? " OUTSIDE normal" : ""}`])) },
+    hrv_and_resting_hr_7_day_R2: { hrv: HRV_TREND, resting_hr: RHR_TREND },
+    check_in_R3: { done_at: CHECKIN.at, score: f.checkin.score, out_of: 20, low: f.checkin.low, energy: CHECKIN.energy, stress: CHECKIN.stress,
+      soreness: CHECKIN.soreness, sleep_quality: CHECKIN.sleep_quality, judged: "a fixed cut-off of 10 of 20 until there are 14 check-ins to compare with" },
+    pain_B2: CHECKIN.pain ? { light: f.pain.light, pain: CHECKIN.pain, where: CHECKIN.where, message: f.pain.message } : null,
+    sleep: { last_night_hours: TODAY.sleep, tonight_in_bed_by: clockMin(t.bed), wake_up: clockMin(t.wake), sleep_need_hours: t.need,
+      last_coffee_by_S4: clockMin(t.caffeine), energy_drinks_or_pre_workout_by_S4: clockMin(t.energy), hard_workouts_over_by_S4: clockMin(t.hardEnd),
+      sleep_regularity_score_S1: f.regularity, regularity_two_weeks_before: f.regularityBefore },
+    exams_coming_up_A2: f.exams.map(([d, title, at]) => `${title} on ${weekday(d)} ${short(d)} at ${clock(at)}`),
+    what_moves_his_recovery_P1: f.patterns.map(p => ({ question: p.question, label: p.label, ...(p.sentence ? { finding: p.sentence } : {}),
+      ...(p.butAlso ? { but_also: p.butAlso } : {}), ...(p.canMakeEasier && p.applies ? { P3_applies_today: p.action } : {}) })),
+    _runs: f.runs, _caps: { max: l.max, running: l.running, limit: l.spike.limit, exact: l.spike.exact },
+    _rest_or_red: f.engine.alert === "rest" || f.pain.light === "red",
+    _bedtimes: NIGHTS.map(n => clockMin(n.bed)), _cutoffs: NIGHTS.flatMap(n => [clockMin(n.caffeine), clockMin(n.energy)]),
+  };
+}
+
+// ---------- Rule chips: [R1, L1] in the coach's words become small chips; hover one for the rule ----------
+const ruleChip = id => (RULES[id] ? `<span class="rule" title="${esc(`${id} · ${RULES[id][0]}: ${RULES[id][1]} (${RULES[id][2]})`)}">${id}</span>` : esc(id));
+const CITED = /\s?\[([A-Z]\d(?:\s*,\s*[A-Z]\d)*)\]/g;
+const withRuleChips = safeHtml => safeHtml.replace(CITED, (_, ids) => ids.split(",").map(id => ruleChip(id.trim())).join(""));
+function rulesUsed(text) {
+  const ids = [...new Set([...(text || "").matchAll(CITED)].flatMap(m => m[1].split(",").map(id => id.trim())).filter(id => RULES[id]))];
+  if (!ids.length) return "";
+  return `<details class="rules-used"><summary><span class="icon">menu_book</span>Research rules this follows${ids.map(ruleChip).join("")}<span class="icon chev">expand_more</span></summary>` +
+    ids.map(id => `<div class="ru">${ruleChip(id)}<div><b>${esc(RULES[id][0])}.</b> ${esc(RULES[id][1])} <span class="src">${esc(RULES[id][2])}</span></div></div>`).join("") + "</details>";
+}
+
+// =====================================================================================
 // Today: ring, tiles, the coach's decision, its steps, and today's calendar
 // =====================================================================================
-(function ringAndTiles() {
+function ringAndTiles() {
+  document.getElementById("ring").replaceChildren();
+  document.getElementById("tiles").replaceChildren();
   const r = TODAY.recovery, radius = 50, around = 2 * Math.PI * radius;
   const ring = svg("svg", { viewBox: "0 0 120 120", role: "img", "aria-label": `Recovery ${r}%` });
   ring.append(
@@ -1001,7 +1400,8 @@ function drawSleep() {
   );
   document.getElementById("ring").append(ring,
     html("div", "zone", `<i class="dot" style="background:${zoneColor(r)}"></i>${zoneName(r)}`),
-    html("div", "zone-note", `Ready to train · up from ${YESTERDAY.recovery}% yesterday`));
+    html("div", "zone-note", `${r >= 67 ? "Ready to train" : r >= 34 ? "Take it a bit easier" : "Rest and recover"} · ` +
+      `${r >= YESTERDAY.recovery ? "up" : "down"} from ${YESTERDAY.recovery}% yesterday`));
 
   const month = DAYS.slice(-31, -1), last14 = DAYS.slice(-14);
   const tiles = [
@@ -1028,7 +1428,150 @@ function drawSleep() {
     tile.append(spark);
     holder.append(tile);
   }
-})();
+}
+
+// ---------- Body check (R1), the morning check-in (R3, B2), and today's limits ----------
+function gaugeHtml(s) {
+  if (s.learning) return `<div class="gauge"><div class="g-name">${s.name}</div><div class="g-val">–</div><div class="g-track"></div><div class="g-note">Still learning</div></div>`;
+  const half = Math.max((s.high - s.low) / 2, 1e-6) * 2.2, spot = v => clamp(50 + (v - s.normal) / half * 50, 3, 97);
+  const left = spot(s.low), right = spot(s.high);
+  return `<div class="gauge${s.off ? " off" : ""}"><div class="g-name">${s.name}</div><div class="g-val">${s.value}<small>${s.unit}</small></div>` +
+    `<div class="g-track" title="Your normal: ${s.low} to ${s.high} ${s.unit}"><i class="g-band" style="left:${left}%;width:${right - left}%"></i>` +
+    `<i class="g-dot" style="left:${spot(s.value)}%"></i></div><div class="g-note">${s.off ? `${s.change} · outside normal` : `Normal ${s.low}–${s.high}`}</div></div>`;
+}
+function drawBody() {
+  const e = FACTS.engine;
+  const [icon, text, style] = { ok: ["check_circle", e.off ? "1 signal off, likely noise" : "All clear", "good"],
+                                easy: ["warning", "Easy day", "warn"], rest: ["emergency_home", "Rest day", "bad"] }[e.alert];
+  const trend = (name, unit, t, higherIsBetter) => {
+    const good = t.status === "within" || (t.status === "above") === higherIsBetter;
+    return `<div><span class="k">${name}</span><b>${t.average} ${unit}</b><span class="n${good ? "" : " bad"}">${t.status} your normal ${t.low}–${t.high}</span></div>`;
+  };
+  document.getElementById("body-check").innerHTML =
+    `<div class="bc-top"><span class="status ${style}"><span class="icon">${icon}</span>${text}</span>` +
+    `<span class="bc-count">${e.off} of ${e.of} signals outside your normal</span></div><p class="bc-msg">${esc(e.message)}</p>` +
+    `<div class="gauges">${e.signals.map(gaugeHtml).join("")}</div>` +
+    `<p class="rule-line">${ruleChip("R1")} Signals can also rise after alcohol, a late meal, a hot room, travel, or during your cycle, so it takes 2 together. It never diagnoses anything.</p>` +
+    (EXAMPLE ? `<p class="example-note">This is a made-up example of a morning when Clive is coming down with something. Press <b>Plan my day</b> to watch the live coach handle it, or switch back to Clive's data.</p>` : "") +
+    `<div class="trends7">${trend("7-day HRV", "ms", HRV_TREND, true)}${trend("7-day resting HR", "bpm", RHR_TREND, false)}${ruleChip("R2")}</div>`;
+}
+let editingCheckin = false;
+function drawCheckin() {
+  const c = CHECKIN, holder = document.getElementById("checkin");
+  document.getElementById("checkin-meta").textContent = editingCheckin ? "" : `Checked in at ${c.at}`;
+  if (!editingCheckin) {
+    const light = FACTS.pain.light, title = c.pain ? `Pain: ${esc(c.where)} ${c.pain}/10` : "No pain";
+    const feel = FACTS.checkin.low ? "lower than usual for you" : FACTS.checkin.good ? "a good morning" : "about usual";
+    holder.innerHTML = `<div class="ck-items">${CHECKIN_QUESTIONS.map(([key, name]) => `${name} <b>${c[key]}</b>/5`).join(" · ")}</div>` +
+      `<div class="ck-score">${FACTS.checkin.score} of 20 · ${feel}${ruleChip("R3")}</div>` +
+      `<div class="light ${light}"><div class="lamps">${["green", "yellow", "red"].map(k => `<i class="${k}${k === light ? " on" : ""}"></i>`).join("")}</div>` +
+      `<div><b>${title}</b><p>${esc(FACTS.pain.message)}${c.pain ? ruleChip("B2") : ""}</p></div></div>` +
+      `<button class="btn" type="button" id="checkin-edit"><span class="icon">edit</span>Change answers</button>`;
+    document.getElementById("checkin-edit").onclick = () => { editingCheckin = true; drawCheckin(); };
+    return;
+  }
+  const draft = { ...c };
+  const render = () => {
+    holder.innerHTML = `<div class="ck-form">${CHECKIN_QUESTIONS.map(([key, name, low, high]) =>
+      `<div class="ck-row"><div><b>${name}</b><small>1 ${low} · 5 ${high}</small></div><div class="seg" data-key="${key}">` +
+      [1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" aria-pressed="${draft[key] === n}">${n}</button>`).join("") + "</div></div>").join("")}
+      <div class="ck-pain"><label>Any pain? <input type="range" min="0" max="10" value="${draft.pain}" id="ck-pain"> <b id="ck-pain-n">${draft.pain}</b>/10</label>
+      ${draft.pain ? `<label>Where <select id="ck-where">${["Left shin", "Right shin", "Left knee", "Right knee", "Left foot or ankle", "Right foot or ankle", "Hip", "Back"]
+        .map(p => `<option${p === draft.where ? " selected" : ""}>${p}</option>`).join("")}</select></label>
+      ${[["one_spot", "It hurts when I press one spot on the bone"], ["at_rest", "It hurts at rest or at night"], ["worse", "It got worse over my last 2 runs"]]
+        .map(([key, text]) => `<label><input type="checkbox" data-flag="${key}"${draft[key] ? " checked" : ""}>${text}</label>`).join("")}` : ""}</div>
+      <div><button class="btn primary" type="button" id="ck-save"><span class="icon">check</span>Save check-in</button></div></div>`;
+    holder.querySelectorAll(".seg").forEach(group => group.addEventListener("click", event => {
+      const b = event.target.closest("button"); if (b) { draft[group.dataset.key] = Number(b.dataset.n); render(); }
+    }));
+    const range = holder.querySelector("#ck-pain");
+    range.addEventListener("input", () => { holder.querySelector("#ck-pain-n").textContent = range.value; });
+    range.addEventListener("change", () => { draft.pain = Number(range.value); render(); });
+    const where = holder.querySelector("#ck-where"); if (where) where.onchange = () => { draft.where = where.value; };
+    holder.querySelectorAll("[data-flag]").forEach(box => { box.onchange = () => { draft[box.dataset.flag] = box.checked; }; });
+    holder.querySelector("#ck-save").onclick = () => {
+      Object.assign(CHECKIN, draft, { at: clockMin(new Date().getHours() * 60 + new Date().getMinutes()) });
+      editingCheckin = false;
+      refreshFacts();
+      document.getElementById("plan-note").textContent = "Your check-in changed today's facts. Press Plan my day to have the live coach re-plan.";
+    };
+  };
+  render();
+}
+function drawLimits() {
+  const l = FACTS.limits;
+  const rules = l.max === "hard" ? [] : [...new Set(l.because.filter(b => b.cap === l.max).map(b => b.rule))].sort();
+  const parts = [`${{ rest: "Rest or easy walks only", easy: "Easy only", moderate: "Moderate at most", hard: "Hard sessions OK" }[l.max]}${rules.map(ruleChip).join("")}`];
+  if (l.afternoon) parts.push(`Easy after 10 AM${ruleChip("R4")}`);
+  if (!l.running) parts.push(`No running today${ruleChip("B2")}`);
+  else if (l.max !== "rest") parts.push(`Runs up to ${l.spike.limit} mi${ruleChip("L1")}`);
+  document.getElementById("limits").innerHTML = `<span class="icon">shield</span><span><b>Today's limits, set by code:</b> ${parts.join(" · ")}</span>`;
+}
+function refreshFacts() {
+  FACTS = computeFacts();
+  drawBody(); drawCheckin(); drawLimits(); drawBadges(); drawSpikeNote();
+}
+function drawSpikeNote() {
+  const s = FACTS.limits.spike;
+  document.getElementById("spike-note").innerHTML = s.longest
+    ? `Longest run in the last 30 days: ${s.longest} mi, so no single run goes over ${s.limit} mi${ruleChip("L1")}` : "Starting back: runs begin at 25 minutes of run/walk";
+}
+
+// ---------- The getting-sick example (switch on the body check card) ----------
+const REAL_TODAY = { ...TODAY };
+function setExample(which) {
+  EXAMPLE = which === "sick" ? "sick" : null;
+  Object.assign(TODAY, EXAMPLE ? { rhr: REAL_TODAY.rhr + 7, resp: 16.1, skin: 34.3, hrv: Math.round(REAL_TODAY.hrv * 0.72), recovery: 29 } : REAL_TODAY);
+  HRV_TREND = personalTrend("hrv"); RHR_TREND = personalTrend("rhr");
+  ringAndTiles(); refreshFacts(); drawTrends(rangeDays);
+  if (EXAMPLE) {
+    showDecision("Not planned yet", "", "This is an example morning, so there's no saved plan. Press Plan my day to watch the live coach decide.",
+                 [], "Example · sample data");
+    document.getElementById("plan-note").textContent = "Example on: the live coach will see these numbers. Reload or switch back to reset.";
+  } else {
+    todaysDecision();
+    document.getElementById("plan-note").textContent = "The coach on this page is real AI working on sample data. Press Plan my day to watch it decide.";
+  }
+}
+
+// ---------- Sleep regularity (S1) and the sleep barcode ----------
+function drawRegular() {
+  const score = FACTS.regularity, before = FACTS.regularityBefore, diff = score - before;
+  const change = Math.abs(diff) < 3 ? `<span class="delta flat">about the same</span><span class="vs">as the 2 weeks before (${before})</span>`
+    : `<span class="delta ${diff > 0 ? "good" : "bad"}"><span class="icon">${diff > 0 ? "arrow_upward" : "arrow_downward"}</span>${Math.abs(diff)}</span><span class="vs">vs. the 2 weeks before (${before})</span>`;
+  const nights = DAYS.slice(-14), place = h => clamp(100 * (h - 8) / 16, 0, 100);  // 8 = 8 PM, 24 = noon (hours after noon)
+  const axis = [8, 12, 16, 20, 24].map(h => `<span style="left:${place(h)}%">${((h + 11) % 12) + 1} ${(h + 12) % 24 >= 12 ? "PM" : "AM"}</span>`).join("");
+  const rows = nights.map(d => {
+    const a = d.bed + 6, b = d.wake + 6;
+    return `<div class="bc-row"><div class="d">${weekday(d.date)} ${toDate(d.date).getUTCDate()}</div><div class="bc-track">` +
+      `<i style="left:${place(a)}%;width:${place(b) - place(a)}%" title="${weekday(addDays(d.date, -1))} night: ${clockMin((d.bed + 18) * 60)} to ${clockMin((d.wake + 18) * 60)}"></i></div></div>`;
+  }).join("");
+  document.getElementById("regular").innerHTML =
+    `<div class="sri"><div class="k"><span class="icon">align_justify_space_even</span>Sleep regularity · last 14 days</div>` +
+    `<div class="big">${score}<small>/100</small></div>${change}<p>The chance you're asleep or awake at the same minute as the day before. 100 is the same every day. ` +
+    `Students with steadier sleep timing tend to earn better grades${ruleChip("S1")}</p></div>` +
+    `<div class="barcode"><div class="bc-row bc-head"><div class="d"></div><div class="bc-track bc-axis">${axis}</div></div>${rows}` +
+    `<div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Asleep (one row per night, by the morning he woke up)</span></div></div>`;
+}
+
+// ---------- What moves your recovery (P1 to P3) ----------
+function drawPatterns() {
+  const place = v => clamp(50 + v / 20 * 50, 0, 100);
+  const styles = { "Consistent pattern": "consistent", "Possible pattern": "possible", "No clear difference yet": "none" };
+  const head = `<div class="pat-row pat-head"><div></div><div class="pat-plot pat-axis">${[-20, -10, 0, 10, 20].map(v => `<span style="left:${place(v)}%">${points(v)}</span>`).join("")}</div><div></div></div>`;
+  const notes = [];
+  const rows = FACTS.patterns.map(p => {
+    const q = `<div class="pat-q"><b>${esc(p.question)}</b><span>${esc(p.versus)}</span></div>`;
+    if (p.effect === null) return `<div class="pat-row grey">${q}<div class="pat-plot"><i class="zero"></i></div><div class="pat-res"><span class="pl">Not enough data yet</span><span>${esc(p.detail)}</span></div></div>`;
+    const s = styles[p.label];
+    if (p.label !== "No clear difference yet") notes.push(esc(p.sentence) + (p.butAlso ? ` <i>${esc(p.butAlso)}</i>` : ""));
+    return `<div class="pat-row">${q}<div class="pat-plot" title="${esc(p.sentence)}"><i class="zero"></i>` +
+      `<i class="whisker ${s}" style="left:${place(p.low)}%;width:${place(p.high) - place(p.low)}%"></i><i class="pdot ${s}" style="left:${place(p.effect)}%"></i></div>` +
+      `<div class="pat-res"><span class="pl ${s}">${p.label}</span><b>${points(p.effect)} points</b><span>likely ${points(p.low)} to ${points(p.high)} · ${esc(p.detail)}</span></div></div>`;
+  }).join("");
+  document.getElementById("patterns").innerHTML = `<div class="pats">${head}${rows}</div><div class="pat-foot">${notes.slice(0, 2).map(n => `<p>${n}</p>`).join("")}` +
+    `<p class="rule-line">${ruleChip("P3")} Points are next-morning recovery compared with your own 28-day trend. The bar is the likely range; a pattern counts as consistent only if it shows up in both halves of your data. Linked to, not proven to cause, and a pattern can only make training easier.</p></div>`;
+}
 
 function stepsHtml(steps) {
   return steps.map(([icon, tool, text, kind]) => {
@@ -1038,13 +1581,16 @@ function stepsHtml(steps) {
 }
 const toolCount = steps => steps.filter(s => s[1]).length;
 
-let adjustedLabel = null;
+let adjustedLabel = null, shownWorkout = "", shownChecked = false;
 function drawBadges() {
   const coachToday = eventsOn(TODAY_ISO).find(e => e[3] === "coach");
   const badges = [];
   if (coachToday && coachToday[4] === "suggested") badges.push(["calendar_add_on", `Suggested ${clock(coachToday[0])} · waiting for your OK`, ""]);
   else if (coachToday) badges.push(["event_available", "Added to Google Calendar", "on-cal"]);
   if (adjustedLabel) badges.push(["edit_calendar", adjustedLabel, ""]);
+  const todayRun = runMiles({ workout: shownWorkout || "" }), percent = FACTS ? spikePercent(todayRun, FACTS.limits.spike) : null;
+  if (percent) badges.push(["speed", `Spike check: ${percent}% of your 30-day longest`, percent > 110 ? "spike" : ""]);
+  if (shownChecked) badges.push(["verified", "Checked by code", ""]);
   document.getElementById("badges").innerHTML = badges.map(([icon, text, style]) =>
     `<span class="badge ${style}"><span class="icon">${icon}</span>${esc(text)}</span>`).join("");
 }
@@ -1052,7 +1598,10 @@ function showDecision(headline, when, why, steps, meta) {
   document.getElementById("headline").textContent = headline;
   document.getElementById("when-text").textContent = when;
   document.getElementById("when").hidden = !when;
-  document.getElementById("why").textContent = why;
+  document.getElementById("why").innerHTML = withRuleChips(esc(why));
+  document.getElementById("rules-used").innerHTML = rulesUsed(why);
+  shownWorkout = headline + (when ? `, ${when}` : "");
+  shownChecked = steps.some(s => s[3] === "check");
   document.getElementById("steps").innerHTML = stepsHtml(steps);
   document.getElementById("steps-count").textContent = `· ${toolCount(steps)} tools`;
   document.getElementById("plan-meta").textContent = meta;
@@ -1359,40 +1908,6 @@ function weekdayChart(rows) {
   });
 }
 
-// =====================================================================================
-// Insights: the same findings the real app looks for (charts.insights), over the range you pick
-// =====================================================================================
-function findInsights(rows) {
-  const found = [], mean = list => list.reduce((a, b) => a + b, 0) / list.length;
-  const long = rows.filter(d => d.sleep >= 7).map(d => d.recovery), shortN = rows.filter(d => d.sleep < 7).map(d => d.recovery);
-  if (long.length >= 3 && shortN.length >= 3) found.push(["bedtime", "Sleep", `${Math.round(mean(long))}% vs ${Math.round(mean(shortN))}%`,
-    "Your recovery after 7+ hours of sleep, compared with shorter nights.", `${long.length} vs ${shortN.length} nights`]);
-  const afterHard = [], afterEasy = [];
-  rows.slice(0, -1).forEach((d, i) => (d.strain >= 14 ? afterHard : afterEasy).push(rows[i + 1].recovery));
-  if (afterHard.length >= 2 && afterEasy.length >= 3) found.push(["local_fire_department", "After hard days",
-    `${Math.round(mean(afterHard))}% vs ${Math.round(mean(afterEasy))}%`,
-    "Your recovery the morning after a day with strain of 14+, compared with easier days.", `${afterHard.length} hard days`]);
-  const early = rows.filter(d => d.bed < 6).map(d => d.recovery), late = rows.filter(d => d.bed >= 6).map(d => d.recovery);
-  if (early.length >= 3 && late.length >= 3) found.push(["dark_mode", "Bedtime", `${Math.round(mean(early))}% vs ${Math.round(mean(late))}%`,
-    "Your recovery when you fell asleep before midnight, compared with after.", `${early.length} vs ${late.length} nights`]);
-  found.push(["favorite", "Easy vs hard", "74% easy", "Share of your workout time in easy heart-rate zones. Coaches suggest about 80%.",
-    rows.length >= 28 ? `${Math.round(rows.length / 7 * 2.4)} hours of workouts` : "3 hours of workouts"]);
-  if (rows.length >= 14) {
-    const recent = mean(rows.slice(-7).map(d => d.hrv)), before = mean(rows.slice(0, -7).map(d => d.hrv));
-    const change = 100 * (recent - before) / before;
-    found.push(["monitor_heart", "HRV trend", `${change >= 0 ? "+" : ""}${Math.round(change)}%`,
-      `Your HRV this week compared with before. ${change >= 3 ? "Rising, a sign you're adapting well." : change <= -3 ? "Dipping, so recovery matters this week." : "Holding steady."}`,
-      `${Math.round(recent)} vs ${Math.round(before)} ms`]);
-  }
-  return found;
-}
-const PATTERNS = findInsights(DAYS).map(([, finding, result, meaning, based_on]) => ({ finding, result, meaning, based_on }));
-function insights(rows) {
-  document.getElementById("insights").innerHTML = findInsights(rows).slice(0, 4).map(([icon, title, big, text, count]) =>
-    `<div class="card insight"><div class="k"><span class="icon">${icon}</span>${title}</div><div class="big">${big}</div>` +
-    `<p>${text}</p><div class="count">${count}</div></div>`).join("");
-}
-
 function table(rows) {
   document.getElementById("table").innerHTML =
     "<thead><tr><th>Date</th><th>Recovery</th><th>HRV (ms)</th><th>Resting HR</th><th>Sleep (h)</th><th>Needed (h)</th><th>Strain</th></tr></thead><tbody>" +
@@ -1414,7 +1929,6 @@ function drawTrends(count = rangeDays) {
   effortChart(count);
   scatterChart(rows);
   weekdayChart(rows);
-  insights(rows);
   table(rows);
 }
 
@@ -1447,7 +1961,7 @@ function stepsDetails(steps) {
 }
 // Turn the coach's plain text into HTML: paragraphs, "- " lists, and **bold**.
 function formatAnswer(text) {
-  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  const inline = s => withRuleChips(esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"));
   let out = "", list = [];
   const flush = () => { if (list.length) { out += `<ul>${list.map(i => `<li>${inline(i)}</li>`).join("")}</ul>`; list = []; } };
   for (const line of text.split("\n")) {
@@ -1478,12 +1992,14 @@ function snapshot() {
       training_load: { running_miles_this_week_so_far: doneMiles("this"), running_miles_last_week: doneMiles("last"),
                        average_weekly_running_miles_4_weeks_before: round(PAST_WEEKLY_MILES.slice(-4).reduce((a, b) => a + b, 0) / 4, 1),
                        share_of_workout_time_easy_percent: 74, other_sports: ["Club tennis, Tuesdays and Thursdays"] },
-      patterns_in_his_data: PATTERNS,
+      what_moves_his_recovery: FACTS.patterns.map(p => ({ question: p.question, label: p.label, ...(p.sentence ? { finding: p.sentence } : { detail: p.detail }),
+                                                         ...(p.butAlso ? { but_also: p.butAlso } : {}) })),
     },
     nights: NIGHTS.map(n => ({ night: `${weekday(n.night)} ${short(n.night)} night → wake up ${weekday(addDays(n.night, 1))} ${short(addDays(n.night, 1))}`,
       bedtime: clockMin(n.bed), wake_up: clockMin(n.wake),
       sleep_need_hours: n.need, minutes_in_bed: n.inBed, first_thing_next_morning: n.first ? `${n.first[2]} at ${clock(n.first[0])}` : null,
-      no_caffeine_after: clockMin(n.caffeine) })),
+      last_coffee_by: clockMin(n.caffeine), energy_drinks_or_pre_workout_by: clockMin(n.energy), hard_workouts_over_by: clockMin(n.hardEnd) })),
+    facts: factsPacket(),
     weather: WEATHER, workouts: WORKOUT_LOG,
     calendar: ALL_DAYS.map(d => ({ date: d.date, workout: d.workout, done: d.plan[2], all_day: (d.allDay || []).map(a => a[0]),
       events: d.events.map(([start, end, title, calendar, tag]) => ({ start, end, title, calendar, tag: tag || null })) })),
@@ -1550,7 +2066,7 @@ const SUGGESTIONS = [
   ["flag", "Help me plan for a 10K"],
   ["sports_tennis", "Can I play tennis tonight?"],
   ["bedtime", "How has my sleep been lately?"],
-  ["help", "Why is today an easy day?"],
+  ["speed", "Can I run 7 miles today?"],
 ];
 
 async function sendMessage(text) {
@@ -1633,32 +2149,35 @@ function todaysDecision() {
   let headline = title, when = detail, plan = "", thought;
   if (w.includes("tennis")) {
     headline = "Club tennis, no run"; when = "4:00–5:30 PM · keep it to practice";
-    plan = "Club tennis at 4:00 is today's training, so there's no run. Two hard sessions in one day would be too much.";
+    plan = "Club tennis at 4:00 is today's training, so there's no run. Two hard sessions in one day would be too much [B1].";
     thought = "Tennis is today's training. A run on top would stack two hard sessions, so the plan stays tennis only.";
   } else if (w.includes("rest")) {
     headline = "Rest day"; when = "An easy walk is fine";
-    plan = w.includes("midterm") ? "Your CHM 111 midterm is today at 10:00, so rest and save your energy for it."
-                                 : "Resting today keeps your legs fresh for the weekend long run.";
+    plan = w.includes("midterm") ? "Your CHM 111 midterm is today at 10:00, so rest and save your energy for it [A2]."
+                                 : "Resting today keeps your legs fresh for the weekend long run [B1].";
     thought = "A planned rest day. Recovery looks fine, and rest days are part of building up safely.";
   } else {
     if (run) when = `${clockRange(run[0], run[1])}${detail ? ` · ${detail}` : ""}`;
-    if (run) plan = `Go at ${clock(run[0])}${firstClass ? `, before your ${clock(firstClass[0])} class,` : ""} while it's cool and dry.`;
+    const miles = runMiles(d), percent = spikePercent(miles, FACTS.limits.spike);
+    if (run) plan = `Go at ${clock(run[0])}${firstClass ? `, before your ${clock(firstClass[0])} class,` : ""} while it's cool and dry, and keep it easy [B1].` +
+      (percent ? ` ${miles} miles is ${percent}% of your longest run in the last 30 days, inside the spike guard [L1].` : "");
     thought = "Recovery is green and HRV is in a good place, so the planned workout stays, kept easy.";
   }
   const why = [
-    `Recovery is ${r}% (${zoneName(r).toLowerCase()}), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ${HRV_TREND.low}–${HRV_TREND.high}.`,
+    `Recovery is ${r}% (${zoneName(r).toLowerCase()}), and your 7-day HRV average is ${HRV_TREND.average} ms, ${HRV_TREND.status} your normal ${HRV_TREND.low}–${HRV_TREND.high} [R2].`,
     `You slept ${TODAY.sleep} of the ${TODAY.need} hours you needed.`, plan,
-    examTomorrow ? "Your CHM 111 midterm is tomorrow at 10:00, so keep today easy and protect tonight's sleep." : "",
-    `Tonight, be in bed by ${clockMin(TONIGHT.bed)}.`,
+    examTomorrow ? "Your CHM 111 midterm is tomorrow at 10:00, so keep today easy and protect tonight's sleep [A2]." : "",
+    `Tonight, be in bed by ${clockMin(TONIGHT.bed)} [S3].`,
   ].filter(Boolean).join(" ");
   const steps = [
     ["sync", null, "Downloaded the latest WHOOP data (14 days)."],
+    ["fact_check", null, `Worked out today's facts in code: limit ${FACTS.limits.max} · runs up to ${FACTS.limits.spike.limit} mi · ${FACTS.engine.off} of 4 body signals off · check-in done.`, "check"],
     ["psychology", null, thought + (examTomorrow ? " The midterm is tomorrow, so sleep matters tonight." : ""), "thought"],
     ["monitor_heart", "get_whoop_recovery", `latest recovery ${r}%, HRV ${TODAY.hrv} ms`],
     ["bedtime", "get_whoop_sleep", `last night ${TODAY.sleep} h asleep, ${TODAY.need} h needed`],
     ["local_fire_department", "get_whoop_strain", `yesterday's strain ${YESTERDAY.strain}`],
     ["directions_run", "get_whoop_workouts", `${doneMiles("this")} running miles this week (${doneMiles("last")} last week)`],
-    ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, 4 patterns in your data`],
+    ["person_search", "get_personal_patterns", `HRV ${HRV_TREND.status} your normal range, ${FACTS.patterns.filter(p => p.effect !== null).length} of 5 recovery questions answered`],
     ["bedtime", "get_sleep_plan", `tonight: in bed by ${clockMin(TONIGHT.bed)}, up at ${clockMin(TONIGHT.wake)}`],
     ["partly_cloudy_day", "get_weather", "sunny, 54–76°F, 0% chance of rain"],
     ["event", "get_calendar_events", `${eventsOn(TODAY_ISO).length} events today${examTomorrow ? "; CHM 111 midterm tomorrow" : ""}`],
@@ -1666,6 +2185,7 @@ function todaysDecision() {
     ["history", "get_training_history", `${doneMiles("last")} running miles last week, all planned workouts done`],
     ...(run ? [["calendar_add_on", "create_calendar_event", `suggested ${clock(run[0])} for ${Math.round((hours(run[1]) - hours(run[0])) * 60)} min, then Clive approved it`]] : []),
     ["save", "save_daily_log", "saved today's decision"],
+    ["verified", null, "Checker: passed all 9 checks.", "check"],
     ["check_circle", null, `Decision: ${d.workout.charAt(0).toLowerCase() + d.workout.slice(1)}${run ? ` at ${clock(run[0])}` : ""}.`, "done"],
   ];
   showDecision(headline, when, why, steps, `Planned ${NOW_HOUR >= 6.7 ? "6:42 AM" : "last night"} · ${toolCount(steps)} tools · claude-haiku-5-5`);
@@ -1675,7 +2195,10 @@ function todaysDecision() {
 // Start: draw everything, wire up the switches, and check whether the live coach is on
 // =====================================================================================
 drawSleep();
+FACTS = computeFacts();
+ringAndTiles();
 todaysDecision();
+drawBody(); drawCheckin(); drawLimits(); drawSpikeNote(); drawRegular(); drawPatterns();
 const todayDate = toDate(TODAY_ISO);
 document.getElementById("today-label").innerHTML =
   `<span class="icon">today</span>${WEEKDAYS_LONG[todayDate.getUTCDay()]}, ${MONTHS_LONG[todayDate.getUTCMonth()]} ${todayDate.getUTCDate()}`;
@@ -1694,6 +2217,7 @@ function wire(groupId, key, draw) {
 }
 wire("week-seg", "week", drawWeek);
 wire("range-seg", "range", value => drawTrends(Number(value)));
+wire("example-seg", "example", setExample);
 drawWeek("this");
 drawTrends(30);
 

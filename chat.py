@@ -16,7 +16,7 @@ SUGGESTIONS = [
     ("flag", "Help me plan for a 10K"),
     ("sports_tennis", "Can I play tennis tonight?"),
     ("bedtime", "How has my sleep been lately?"),
-    ("help", "Why is today an easy day?"),
+    ("speed", "Can I run 7 miles today?"),
 ]
 
 email = st.user.email
@@ -53,7 +53,7 @@ for number, (question, answer, steps) in enumerate(turns):
     with st.container(key=f"msg-you-{number}"), st.chat_message("user", avatar=":material/person:"):
         st.write(ui.plain(question))
     with st.container(key=f"msg-coach-{number}"), st.chat_message("assistant", avatar=":material/directions_run:"):
-        st.markdown(ui.plain(answer))
+        st.markdown(ui.coach_text(answer), unsafe_allow_html=True)
         used = ui.tools_used(steps)
         if used:
             with st.expander(f"Looked at {used} thing{'s' if used != 1 else ''}", icon=":material/account_tree:"):

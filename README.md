@@ -8,7 +8,11 @@ time on your calendar. You can also message the coach on the **Ask the coach** p
 (for example, to plan for a race), and it shows a bedtime and wake-up time for each night.
 
 The coach compares you with *your own* normal, remembers what you tell it, and follows
-rules from sports and sleep research. **[RESEARCH.md](RESEARCH.md)** explains how, with sources.
+rules from sports and sleep research. **Code decides, the AI explains:** Python works out today's
+limits from your data (a "check engine light" of 4 body signals, a 10-second morning check-in with a
+pain traffic light, a spike guard on run length, sleep and caffeine times, and what moves your
+recovery), Claude has to cite the rule behind each recommendation (like `[L1]`), and a checker reads
+every reply before you do. **[RESEARCH.md](RESEARCH.md)** explains each rule, with sources.
 
 Built by Clive Curry for an AI seminar class at Wake Forest.
 
@@ -32,6 +36,9 @@ press **Plan my day** or message it on **Ask the coach**, and it works on the sa
 - [x] **Dashboard update:** last, this, and next week on the calendar (with all-day events), 7/30/90-day trends, running miles done vs. planned, and WHOOP data that downloads itself
 - [x] **Personalized coach:** research-based rules, your own normal ranges and patterns, memory, an
   "Ask the coach" chat, and a sleep plan (bedtime, wake-up time, caffeine cutoff) for the week ahead
+- [x] **Research upgrades:** a rules engine with cited rule IDs, a reply checker, the check engine
+  light, a morning check-in with a pain traffic light, the spike guard, "What moves your recovery"
+  with honest ranges, a sleep regularity score and sleep barcode, and updated caffeine rules
 - [x] **Phase 4:** Online at [clive-training-coach.streamlit.app](https://clive-training-coach.streamlit.app) (Streamlit Community Cloud)
 - [ ] **Phase 5 (optional):** A morning plan sent automatically
 
@@ -42,21 +49,24 @@ the code calls the Claude API directly (no big framework), gives Claude a set of
 **tools**, and runs a simple loop:
 
 1. The website downloads your newest WHOOP data into the database.
-2. Claude gets instructions, a description of you (goal, run times, what it remembers about you),
-   and **up to 15 tools**.
-3. Claude asks to use tools. The code runs them and sends back the results.
-4. That repeats until Claude decides, with at most 10 rounds so it can't run forever.
-5. Every step is saved and shown on the page.
+2. Code works out **today's facts** (`facts.py`): today's limits and the rules behind them.
+3. Claude gets instructions, a description of you (goal, run times, what it remembers about you),
+   the facts packet, and **up to 15 tools**.
+4. Claude asks to use tools. The code runs them and sends back the results. Tools that change the
+   plan turn down workouts that break today's limits.
+5. That repeats until Claude answers, with at most 10 rounds so it can't run forever.
+6. **The checker** (`checker.py`) reads the answer. If it breaks a rule, Claude gets one try to fix it.
+7. Every step is saved and shown on the page.
 
 | Tool | What it gives Claude |
 |---|---|
 | `get_whoop_recovery`, `get_whoop_sleep`, `get_whoop_strain`, `get_whoop_workouts` | Your WHOOP numbers, compared with your own 30-day normal |
-| `get_personal_patterns` | What's normal for you: 7-day HRV and resting heart rate vs. your range, sleep habits, training load, patterns in your data |
-| `get_sleep_plan` | Your bedtime and wake-up time for the next 7 nights |
+| `get_personal_patterns` | What's normal for you: 7-day HRV and resting heart rate vs. your range, sleep habits and regularity, training load, what moves your recovery |
+| `get_sleep_plan` | Your bedtime, wake-up time, and caffeine cutoffs for the next 7 nights |
 | `get_weather` | Hour-by-hour forecast for your city (Open-Meteo) |
 | `get_calendar_events` | Your classes and events, plus free time that fits when you like to run |
 | `get_training_plan`, `get_training_history` | The plan for the next 2 weeks, and what happened before |
-| `update_training_plan` | Writes or changes the plan (the coach builds one if you don't have one) |
+| `update_training_plan` | Writes or changes the plan, and turns down any run past the spike guard |
 | `create_calendar_event` | *Suggests* a workout time. You approve it on the website |
 | `save_daily_log` | Saves today's decision and the reason |
 | `remember_about_them` | Saves a short note about you (an injury, a preference). You can edit these |
@@ -87,11 +97,14 @@ The database blocks public access, and only the website's server can read it.
 | File | What it does |
 |---|---|
 | `app.py` | Starts the website and lists its pages |
-| `home.py` | The main page: today's numbers, the coach, the sleep plan, the week on your calendar, trends, and insights |
+| `home.py` | The main page: today's numbers, the body check and morning check-in, the coach, the sleep plan and sleep regularity, the week on your calendar, trends, and what moves your recovery |
 | `chat.py` | The "Ask the coach" page: message the coach |
 | `settings.py` | The "Coaching profile" page: goal, city, run times, what the coach remembers, connections |
 | `agent.py` | The AI coach: its instructions, its tools, and the tool-use loop |
-| `personal.py` | Works out what's normal for you: HRV and heart-rate ranges, sleep habits, training load |
+| `facts.py` | The rules engine: each rule and its ID, the check engine light, the check-in, the pain light, the spike guard, and today's limits |
+| `patterns.py` | "What moves your recovery": five fixed questions with likely ranges |
+| `checker.py` | Checks every reply from the coach before you see it |
+| `personal.py` | Works out what's normal for you: HRV and heart-rate ranges, sleep habits and regularity, training load |
 | `sleep_plan.py` | Recommended bedtimes and wake-up times |
 | `RESEARCH.md` | How the coach is personalized, and the studies behind its rules |
 | `config.py` | Settings: which Claude model, step limit, daily limits, sleep plan settings |
@@ -138,4 +151,4 @@ It opens at http://localhost:8501.
 - **Google Calendar:** until Google verifies the app, only people invited as testers (up to 100) can
   connect their calendar, and they reconnect every 7 days. Signing in with Google works for anyone.
 - **Claude credits** are shared by everyone who uses the site, so there's a daily cap per
-  person in `config.py`. Each run costs a fraction of a cent, so most people never reach it.
+  person in `config.py`. Most people never reach it.

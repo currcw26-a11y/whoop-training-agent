@@ -5,10 +5,13 @@
 
 import html
 import math
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 import streamlit as st
+
+import facts
 
 TOOL_ICONS = {
     "get_whoop_recovery": "monitor_heart", "get_whoop_sleep": "bedtime", "get_whoop_strain": "local_fire_department",
@@ -252,16 +255,6 @@ def week_calendar(days, first_hour, last_hour, now):
             f'{"".join(columns)}</div></div></div>')
 
 
-def insight_cards(found):
-    """Up to 4 insight cards in one even row (they all get the same height)."""
-    cards = "".join(
-        f'<div class="insight"><div class="k"><span class="msr">{icon}</span>{html.escape(title)}</div>'
-        f'<div class="big">{html.escape(headline)}</div><p>{html.escape(text)}</p>'
-        f'<div class="count">{html.escape(count)}</div></div>'
-        for icon, title, headline, text, count in found[:4])
-    return f'<div class="insights">{cards}</div>'
-
-
 def _hours_minutes(minutes):
     """95 -> '1 h 35 min', 120 -> '2 h', 35 -> '35 min'."""
     hours, minutes = divmod(int(minutes), 60)
@@ -295,7 +288,7 @@ def sleep_card(nights, now):
         # The math, so it's clear where the bedtime comes from.
         why += (f'<span class="sl-math">{tonight["need_hours"]:g} h needed ÷ {tonight["efficiency"]}% sleep efficiency '
                 f'= {_hours_minutes(tonight["in_bed_minutes"])} in bed</span>')
-    chips = [("coffee", f"No caffeine after {clock(tonight['caffeine_cutoff'])}", "")]
+    chips = []
     shift = tonight["earlier_than_usual_minutes"]
     if shift is not None and abs(shift) >= 15:
         chips.append(("schedule", f"{_hours_minutes(abs(shift))} {'earlier' if shift > 0 else 'later'} than usual", ""))
@@ -305,7 +298,14 @@ def sleep_card(nights, now):
         f'<div class="big">{bed_value}</div></div>'
         f'<div class="sl-time"><div class="k"><span class="msr">alarm</span>Wake up</div>'
         f'<div class="big">{_big_time(tonight["wake"])}</div></div></div>'
-        f'<p class="sl-why">{why}</p>{badges(chips)}</div>')
+        f'<p class="sl-why">{why}</p>'
+        f'<div class="sl-cut">'
+        f'<div><span class="msr">coffee</span><b>{clock(tonight["caffeine_cutoff"])}</b><small>Last coffee</small></div>'
+        f'<div><span class="msr">bolt</span><b>{clock(tonight["energy_drink_cutoff"])}</b><small>Energy drinks</small></div>'
+        f'<div><span class="msr">fitness_center</span><b>{clock(tonight["hard_workout_end"])}</b><small title="Hard workouts done by">Hard workouts</small></div>'
+        f'</div>{badges(chips)}'
+        f'<p class="rule-line">{rule_chip("S3")} At least 7 hours of sleep {rule_chip("S4")} Coffee 9 h, energy '
+        f'drinks 13 h, and hard workouts 2 h before bed</p></div>')
 
     # The week ahead: each night is a bar from bedtime to wake-up on a 8 PM to 1 PM scale.
     span = 17 * 60  # minutes from 8 PM to 1 PM
@@ -336,6 +336,215 @@ def sleep_card(nights, now):
             f'<div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Time in bed</span>'
             f'<span><i class="ev-key"></i>First thing the next morning</span></div></div>')
     return f'<div class="sleep">{left_side}{week}</div>'
+
+
+# ---------- Rule IDs, like [R1, L1] ----------
+
+def rule_chip(rule):
+    """A small chip for one rule ID. Hovering it shows the rule and where it comes from."""
+    if rule not in facts.RULES:
+        return html.escape(rule)
+    name, text, source = facts.RULES[rule]
+    return f'<span class="rule" title="{html.escape(f"{rule} · {name}: {text} ({source})")}">{rule}</span>'
+
+
+def with_rule_chips(text):
+    """Turn [R1, L1] in the coach's text into rule chips. The text must already be safe HTML."""
+    return facts_cited.sub(lambda found: "".join(rule_chip(r.strip()) for r in found.group(1).split(",")), text)
+
+
+facts_cited = re.compile(r"\s?\[([A-Z]\d(?:\s*,\s*[A-Z]\d)*)\]")
+
+
+def coach_text(text):
+    """The coach's reply as safe Markdown with rule chips (for st.markdown with unsafe_allow_html)."""
+    return with_rule_chips(plain(html.escape(text, quote=False)))
+
+
+def rules_used(text):
+    """'Rules this plan follows': each rule the text cites, with its sentence and source."""
+    cited = []
+    for group in facts_cited.findall(text or ""):
+        for rule in group.split(","):
+            if rule.strip() in facts.RULES and rule.strip() not in cited:
+                cited.append(rule.strip())
+    if not cited:
+        return ""
+    rows = "".join(f'<div class="ru">{rule_chip(rule)}<div><b>{html.escape(facts.RULES[rule][0])}.</b> '
+                   f'{html.escape(facts.RULES[rule][1])} <span class="src">{html.escape(facts.RULES[rule][2])}</span></div></div>'
+                   for rule in cited)
+    return (f'<details class="rules-used"><summary><span class="msr">menu_book</span>Research rules this follows'
+            f'{"".join(rule_chip(rule) for rule in cited)}<span class="msr chev">expand_more</span></summary>{rows}</details>')
+
+
+def limits_strip(caps):
+    """Today's limits as code set them, so it's clear the AI works inside them."""
+    level = caps["max_intensity"]
+    rules = sorted({b["rule"] for b in caps["because"] if b["cap"] == level}) if level != "hard" else []
+    parts = [{"rest": "Rest or easy walks only", "easy": "Easy only", "moderate": "Moderate at most",
+              "hard": "Hard sessions OK"}[level] + "".join(rule_chip(r) for r in rules)]
+    if caps["afternoon_max"]:
+        parts.append(f"Easy after 10 AM{rule_chip('R4')}")
+    if not caps["running_allowed"]:
+        parts.append(f"No running today{rule_chip('B2')}")
+    elif caps["longest_run_miles"] and level != "rest":
+        parts.append(f"Runs up to {caps['longest_run_miles']:g} mi{rule_chip('L1')}")
+    return (f'<div class="limits"><span class="msr">shield</span><span><b>Today\'s limits, set by code:</b> '
+            f'{" · ".join(parts)}</span></div>')
+
+
+# ---------- Body check: the check engine light (rule R1) ----------
+
+def _gauge(signal):
+    if signal["learning"]:
+        return (f'<div class="gauge"><div class="g-name">{html.escape(signal["name"])}</div>'
+                f'<div class="g-val">–</div><div class="g-track"></div>'
+                f'<div class="g-note">Still learning ({min(signal["nights"], 14)} of 14 nights)</div></div>')
+    half = max((signal["high"] - signal["low"]) / 2, 1e-6) * 2.2
+    spot = lambda value: max(3.0, min(97.0, 50 + (value - signal["normal"]) / half * 50))
+    left, right = spot(signal["low"]), spot(signal["high"])
+    unit = signal["unit"]
+    note = f'{signal["change"]} · outside normal' if signal["off"] else f'Normal {signal["low"]:g}–{signal["high"]:g}'
+    return (f'<div class="gauge{" off" if signal["off"] else ""}"><div class="g-name">{html.escape(signal["name"])}</div>'
+            f'<div class="g-val">{signal["value"]:g}<small>{unit}</small></div>'
+            f'<div class="g-track" title="Your normal: {signal["low"]:g} to {signal["high"]:g} {unit}">'
+            f'<i class="g-band" style="left:{left:.1f}%;width:{right - left:.1f}%"></i>'
+            f'<i class="g-dot" style="left:{spot(signal["value"]):.1f}%"></i></div>'
+            f'<div class="g-note">{html.escape(note)}</div></div>')
+
+
+def week_trends(hrv, resting):
+    """Rule R2: this week's HRV and resting heart rate averages against the person's normal range."""
+    items = []
+    for name, unit, found in [("7-day HRV", "ms", hrv), ("7-day resting HR", "bpm", resting)]:
+        if not found:
+            items.append(f'<div><span class="k">{name}</span><b>Still learning</b><span class="n">needs 3 weeks</span></div>')
+            continue
+        low, high = found["your_normal_range"]
+        good = found["meaning"] != "less recovered than usual: keep training easy"
+        items.append(f'<div><span class="k">{name}</span><b>{found["last_7_day_average"]:g} {unit}</b>'
+                     f'<span class="n {"" if good else "bad"}">{found["place"]} your normal {low:g}–{high:g}</span></div>')
+    return f'<div class="trends7">{"".join(items)}{rule_chip("R2")}</div>'
+
+
+def body_check(engine, hrv=None, resting=None):
+    """The check engine light: a status, one plain sentence, and four little gauges."""
+    if not engine:
+        return '<p class="empty-note">No WHOOP mornings yet.</p>'
+    status = {"ok": ("check_circle", "All clear" if not engine["off"] else "1 signal off, likely noise", "good"),
+              "easy": ("warning", "Easy day", "warn"), "rest": ("emergency_home", "Rest day", "bad"),
+              None: ("hourglass_top", "Still learning your normal", "flat")}[engine["alert"]]
+    signals = "".join(_gauge(s) for s in engine["signals"])
+    return (f'<div class="bc-top"><span class="status {status[2]}"><span class="msr">{status[0]}</span>{status[1]}</span>'
+            f'<span class="bc-count">{engine["off"]} of {engine["of"]} signals outside your normal</span></div>'
+            f'<p class="bc-msg">{html.escape(engine["message"])}</p><div class="gauges">{signals}</div>'
+            f'<p class="rule-line">{rule_chip("R1")} Signals can also rise after alcohol, a late meal, a hot room, travel, '
+            f'or during your cycle, so it takes 2 together. It never diagnoses anything.</p>'
+            + week_trends(hrv, resting))
+
+
+# ---------- The morning check-in (rules R3 and B2) ----------
+
+def checkin_summary(checkin, pain):
+    """What they said this morning, and the pain traffic light."""
+    items = " · ".join(f'{name.replace(" quality", "")} <b>{checkin[key]}</b>/5' for key, name in facts.QUESTIONS)
+    feel = "lower than usual for you" if checkin["low"] else "a good morning" if checkin["good"] else "about usual"
+    light = pain["light"] if pain else "green"
+    title = (f'Pain: {html.escape(pain["where"] or "yes")} {pain["pain"]}/10' if pain and pain["pain"] else "No pain")
+    lights = "".join(f'<i class="{color}{" on" if color == light else ""}"></i>' for color in ("green", "yellow", "red"))
+    return (f'<div class="ck-items">{items}</div>'
+            f'<div class="ck-score">{checkin["score"]} of 20 · {feel}{rule_chip("R3")}</div>'
+            f'<div class="light {light}"><div class="lamps">{lights}</div><div><b>{title}</b>'
+            f'<p>{html.escape(pain["message"] if pain else "")}{rule_chip("B2") if pain and pain["pain"] else ""}</p></div></div>')
+
+
+# ---------- Sleep regularity and the sleep barcode (rule S1) ----------
+
+def regularity_card(score, before, nights):
+    """The Sleep Regularity Index, and a 'barcode' of the last 14 nights (one row each)."""
+    if score is None:
+        left = ('<div class="sri"><div class="k"><span class="msr">align_justify_space_even</span>Sleep regularity</div>'
+                '<div class="big">–</div><p>Needs about a week of nights in a row.</p></div>')
+    else:
+        change = ""
+        if before is not None and abs(score - before) < 3:
+            change = f'<span class="delta flat">about the same</span><span class="vs">as the 2 weeks before ({before})</span>'
+        elif before is not None:
+            better = score > before
+            change = (f'<span class="delta {"good" if better else "bad"}"><span class="msr">'
+                      f'{"arrow_upward" if better else "arrow_downward"}</span>{abs(score - before)}</span>'
+                      f'<span class="vs">vs. the 2 weeks before ({before})</span>')
+        left = (f'<div class="sri"><div class="k"><span class="msr">align_justify_space_even</span>Sleep regularity · '
+                f'last 14 days</div><div class="big">{score}<small>/100</small></div>{change}'
+                f'<p>The chance you\'re asleep or awake at the same minute as the day before. 100 is the same every '
+                f'day. Students with steadier sleep timing tend to earn better grades{rule_chip("S1")}</p></div>')
+    known = [(a, b) for _, a, b in nights if a is not None]
+    if not known:
+        return f'<div class="regular">{left}</div>'
+
+    def hours(moment, morning):  # hours after noon of the day before the morning
+        noon = datetime.combine(morning - timedelta(days=1), datetime.min.time(), moment.tzinfo).replace(hour=12)
+        return (moment - noon).total_seconds() / 3600
+    spans = [(morning, hours(a, morning), hours(b, morning)) for morning, a, b in nights if a is not None]
+    low = min(8, math.floor(min(s for _, s, _ in spans)))       # 8 = 8 PM
+    high = max(24, math.ceil(max(e for _, _, e in spans)))      # 24 = noon
+    place = lambda h: 100 * (h - low) / (high - low)
+    axis = "".join(f'<span style="left:{place(h):.1f}%">{(h + 11) % 12 + 1} {"PM" if (h + 12) % 24 >= 12 else "AM"}</span>'
+                   for h in range(low + (low % 2), high + 1, 4 if high - low > 14 else 2))
+    rows = []
+    for morning, asleep, awake in nights:
+        bar = ""
+        if asleep is not None:
+            a, b = hours(asleep, morning), hours(awake, morning)
+            bar = (f'<i style="left:{place(a):.1f}%;width:{place(b) - place(a):.1f}%" '
+                   f'title="{morning - timedelta(days=1):%a} night: {clock(asleep)} to {clock(awake)}"></i>')
+        rows.append(f'<div class="bc-row"><div class="d">{morning:%a} {morning.day}</div>'
+                    f'<div class="bc-track">{bar}</div></div>')
+    return (f'<div class="regular">{left}<div class="barcode"><div class="bc-row bc-head"><div class="d"></div>'
+            f'<div class="bc-track bc-axis">{axis}</div></div>{"".join(rows)}'
+            f'<div class="legend"><span><i class="swatch" style="background:var(--s1)"></i>Asleep (one row per night, '
+            f'by the morning you woke up)</span></div></div></div>')
+
+
+# ---------- What moves your recovery (rules P1 to P3) ----------
+
+def points(value):
+    """+11, 0, or −4 (a real minus sign)."""
+    whole = int(round(value))
+    return "0" if whole == 0 else f"+{whole}" if whole > 0 else f"−{abs(whole)}"
+
+
+def patterns_card(rows):
+    """One dot-and-whisker row per question: the likely effect on next-morning recovery and its range."""
+    scale = 20  # recovery points from the middle to each edge
+    place = lambda v: max(0.0, min(100.0, 50 + v / scale * 50))
+    styles = {"Consistent pattern": "consistent", "Possible pattern": "possible", "No clear difference yet": "none"}
+    head = ('<div class="pat-row pat-head"><div></div><div class="pat-plot pat-axis">'
+            + "".join(f'<span style="left:{place(v):.0f}%">{points(v)}</span>' for v in (-20, -10, 0, 10, 20))
+            + '</div><div></div></div>')
+    out, notes = [], []
+    for row in rows:
+        question = (f'<div class="pat-q"><b>{html.escape(row["question"])}</b>'
+                    f'<span>{html.escape(row["versus"])}</span></div>')
+        if row["effect"] is None:
+            out.append(f'<div class="pat-row grey">{question}<div class="pat-plot"><i class="zero"></i></div>'
+                       f'<div class="pat-res"><span class="pl">Not enough data yet</span>'
+                       f'<span>{html.escape(row.get("detail") or "")}</span></div></div>')
+            continue
+        style = styles[row["label"]]
+        out.append(
+            f'<div class="pat-row">{question}<div class="pat-plot" title="{html.escape(row["sentence"])}"><i class="zero"></i>'
+            f'<i class="whisker {style}" style="left:{place(row["low"]):.1f}%;width:{place(row["high"]) - place(row["low"]):.1f}%"></i>'
+            f'<i class="pdot {style}" style="left:{place(row["effect"]):.1f}%"></i></div>'
+            f'<div class="pat-res"><span class="pl {style}">{row["label"]}</span><b>{points(row["effect"])} points</b>'
+            f'<span>likely {points(row["low"])} to {points(row["high"])} · {html.escape(row["detail"])}</span></div></div>')
+        if row["label"] != "No clear difference yet":
+            notes.append(html.escape(row["sentence"]) + (f' <i>{html.escape(row["but_also"])}</i>' if row.get("but_also") else ""))
+    foot = "".join(f"<p>{note}</p>" for note in notes[:2])
+    return (f'<div class="pats">{head}{"".join(out)}</div><div class="pat-foot">{foot}'
+            f'<p class="rule-line">{rule_chip("P3")} Points are next-morning recovery compared with your own '
+            f'28-day trend. The bar is the likely range; a pattern counts as consistent only if it shows up in both '
+            f'halves of your data. Linked to, not proven to cause, and a pattern can only make training easier.</p></div>')
 
 
 # ---------- Showing what the agent did ----------
@@ -381,6 +590,8 @@ def summarize(tool, tool_input, output):
             return f"{len(output['plan'])} days already planned" if output["plan"] else "no plan yet"
         if tool == "get_training_history":
             return f"{len(output['history'])} past days" if output["history"] else "no history yet"
+        if tool == "update_training_plan" and output.get("turned_down"):
+            return f"wrote {output['saved']} days; turned down {len(output['turned_down'])}: {output['turned_down'][0]}"
         if tool == "update_training_plan":
             return f"wrote {output['saved']} days of the plan"
         if tool == "save_daily_log":
@@ -392,7 +603,8 @@ def summarize(tool, tool_input, output):
             return f"suggested {tool_input['start_time']} for {tool_input['minutes']} min, waiting for your OK"
         if tool == "get_personal_patterns":
             hrv = output["hrv"]
-            patterns = f"{len(output['patterns_in_their_data'])} patterns in your data"
+            found = sum(1 for p in output["what_moves_their_recovery"] if p["label"] != "Not enough data yet")
+            patterns = f"{found} of 5 recovery questions answered"
             return f"HRV {hrv['status']}, {patterns}" if isinstance(hrv, dict) else patterns
         if tool == "get_sleep_plan":
             night = output["nights"][0]
@@ -413,6 +625,13 @@ def show_steps(steps, raw=False):
         kind = step["kind"]
         if kind == "sync":
             st.markdown(f":material/sync: {step['text']}")
+        elif kind == "facts":
+            st.markdown(f":material/fact_check: {plain(step['text'])}")
+            if raw:
+                st.json({"The facts packet Claude started with": step["packet"]}, expanded=1)
+        elif kind == "check":
+            icon = "verified" if step["passed"] else "rule"
+            st.markdown(f":material/{icon}: {plain(step['text'])}")
         elif kind == "thinking":
             st.caption(f":material/psychology: {plain(step['text'])}")
         elif kind == "note":

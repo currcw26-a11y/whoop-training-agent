@@ -11,7 +11,7 @@ ui.label("Your data", "lock", "privacy")
 st.title("Privacy")
 
 st.markdown("""
-*Last updated October 16, 2026*
+*Last updated October 20, 2026*
 
 **Training Coach** is a student project built by Clive Curry for an AI seminar class at
 Wake Forest. It gives training suggestions, **not medical advice**.
@@ -27,10 +27,12 @@ Wake Forest. It gives training suggestions, **not medical advice**.
 - Your **messages to the coach** on the Ask the coach page, and short **notes** the coach saves
   from them (like an injury you mention). You can see, edit, or delete the notes on your
   Coaching profile page.
+- Your **morning check-in**, if you fill it in: how you rate your energy, stress, soreness, and
+  sleep (1 to 5), and any pain you report (how much, where, and the yes/no warning-sign questions).
 
 ### How it's used
 - Only to show you your own data and plan your training.
-- When you press **Plan my day** or send the coach a message, your recent numbers, the
+- When you press **Plan my day** or send the coach a message, your recent numbers, your check-in, the
   calendar events it needs, and the coach's notes are sent to Anthropic's Claude API,
   which writes the answer.
 - Your data is never sold, never used for ads, and never shared with anyone except as

@@ -5,10 +5,12 @@
 #      morning (WAKE_BEFORE_WORKOUT_MINUTES if it's a workout). With nothing early, wake close
 #      to your usual time (at most 30 minutes later), because a steady wake-up time keeps
 #      your body clock steady. In a Harvard study, students with irregular sleep had lower grades.
-#   2. How much sleep: WHOOP's sleep need for you (it already counts sleep debt and hard days).
+#   2. How much sleep: WHOOP's sleep need for you (it already counts sleep debt and hard days),
+#      but never less than 7 hours, the sleep experts' minimum for adults (rule S3), or more than 10.
 #   3. Time in bed: sleep need ÷ your sleep efficiency, since nobody is asleep the whole time in bed.
 #   4. Bedtime = wake-up time − time in bed.
-#   5. No caffeine within 6 hours of bedtime (caffeine 6 hours before bed cut sleep by over an hour).
+#   5. Caffeine (rule S4): last coffee 9 hours before bedtime, energy drinks or pre-workout 13 hours
+#      before (a 2023 review of 24 studies), and hard workouts done 2+ hours before bedtime.
 # Sources are in RESEARCH.md.
 
 from datetime import datetime, time, timedelta
@@ -50,7 +52,7 @@ def plan_night(night, found, habits, need_hours, time_zone):
         needed_by = first["start"] - timedelta(minutes=before)
     wake = _round_down(min(needed_by, relaxed) if needed_by else relaxed)
 
-    need = max(6.5, min(10.5, need_hours or 8.0))
+    need = max(7.0, min(10.0, need_hours or 8.0))
     in_bed = need / efficiency
     bed = _round_down(wake - timedelta(hours=in_bed))
     return {
@@ -58,7 +60,9 @@ def plan_night(night, found, habits, need_hours, time_zone):
         "set_by_first": bool(needed_by and needed_by < relaxed),  # True if the first event decided the wake-up time
         "efficiency": round(efficiency * 100),
         "need_hours": round(need, 1), "in_bed_minutes": int(round(in_bed * 60 / 5) * 5),
-        "caffeine_cutoff": _round_down(bed - timedelta(hours=6), 30),
+        "caffeine_cutoff": _round_down(bed - timedelta(hours=config.COFFEE_HOURS_BEFORE_BED), 15),
+        "energy_drink_cutoff": _round_down(bed - timedelta(hours=config.ENERGY_DRINK_HOURS_BEFORE_BED), 15),
+        "hard_workout_end": _round_down(bed - timedelta(hours=config.HARD_WORKOUT_HOURS_BEFORE_BED), 15),
         "earlier_than_usual_minutes": (
             int(round((habits["_bed"] - (bed.hour * 60 + bed.minute + (24 * 60 if bed.hour < 12 else 0))) / 5) * 5)
             if habits else None),

@@ -157,3 +157,22 @@ alter table screen_time   enable row level security;
 -- were "Plan my day" and which were chat messages on the Ask the coach page.
 alter table profiles add column if not exists coach_notes text;
 alter table agent_runs add column if not exists kind text not null default 'plan';
+
+-- ===================== Added for the research upgrades =====================
+-- The 10-second morning check-in: how you feel (1 to 5 each) and any pain (rules R3 and B2).
+create table if not exists checkins (
+  email text references profiles(email) on delete cascade,
+  date date,
+  energy int,                      -- 1 = drained, 5 = great
+  stress int,                      -- 1 = calm, 5 = very stressed
+  soreness int,                    -- 1 = none, 5 = very sore
+  sleep_quality int,               -- 1 = awful, 5 = great
+  pain int default 0,              -- 0 = no pain, up to 10
+  pain_where text,                 -- like 'Left shin'
+  pain_one_spot boolean default false,  -- hurts when you press one spot on the bone
+  pain_at_rest boolean default false,   -- hurts at rest or at night
+  pain_worse boolean default false,     -- got worse over the last 2 runs
+  created_at timestamptz default now(),
+  primary key (email, date)
+);
+alter table checkins enable row level security;

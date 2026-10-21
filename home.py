@@ -1,13 +1,13 @@
 # home.py: the main page. Same layout as the demo (docs/index.html), with live data.
 #   Signed out -> what the site does, and "Sign in with Google".
-#   Signed in  -> 1. today's numbers  2. the coach + today's calendar  3. the sleep plan  4. the week
-#                 5. trends  6. insights.
+#   Signed in  -> 1. today's numbers  2. body check + morning check-in  3. the coach + today's calendar
+#                 4. the sleep plan + sleep regularity  5. the week  6. trends  7. what moves your recovery.
 # WHOOP numbers are read from the database (downloaded into it first). Calendar events come
-# straight from Google Calendar, remembered for 5 minutes.
+# straight from Google Calendar, remembered for 5 minutes. Today's limits come from facts.py,
+# the same rules engine the coach works inside.
 # The look comes from style.css and .streamlit/config.toml.
 
 import html
-import re
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -20,14 +20,17 @@ import agent
 import charts
 import config
 import db
+import facts
 import google_calendar
+import patterns
 import personal
 import sleep_plan
 import ui
 import weather
 import whoop
 
-EXAM = re.compile(r"\b(exam|midterm|final|quiz|test)s?\b", re.IGNORECASE)
+EXAM = facts.EXAM
+PAIN_PLACES = ["Shin", "Knee", "Foot or ankle", "Calf", "Hip", "Back", "Other"]
 
 
 def whoop_error(error):
@@ -52,11 +55,19 @@ def week_events(email, monday, time_zone_name):
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def sleep_events(email, first_morning, time_zone_name):
-    """Events for the 7 mornings after tonight, for the sleep plan's wake-up times."""
+def sleep_events(email, first_day, time_zone_name):
+    """Events from today through the next 8 days: for the sleep plan's wake-up times and exams coming up."""
     zone = ZoneInfo(time_zone_name)
-    start = datetime.combine(date.fromisoformat(first_morning), time(0), zone)
-    return google_calendar.list_events(email, start, start + timedelta(days=7), zone)
+    start = datetime.combine(date.fromisoformat(first_day), time(0), zone)
+    return google_calendar.list_events(email, start, start + timedelta(days=8), zone)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def past_exam_days(email, today_text, time_zone_name):
+    """Days in the last 90 with an exam on the calendar, for "the day after an exam"."""
+    zone = ZoneInfo(time_zone_name)
+    midnight = datetime.combine(date.fromisoformat(today_text), time(0), zone)
+    return agent.exam_days(google_calendar.list_events(email, midnight - timedelta(days=90), midnight, zone))
 
 
 def calendar_box(email, plan, connected, time_zone):
@@ -270,6 +281,28 @@ def change(column, compare):
     return None if value is None or pd.isna(value) or compare is None or pd.isna(compare) else value - compare
 
 
+# ---------- Today's facts: the same rules engine the coach works inside (facts.py) ----------
+first_night = sleep_plan.tonight(now)
+coming, exam_history = [], None
+if calendar_connected:
+    try:
+        coming = sleep_events(email, today.isoformat(), str(time_zone))
+        exam_history = past_exam_days(email, today.isoformat(), str(time_zone))
+    except requests.HTTPError:
+        pass  # without the calendar, wake-up times assume nothing early
+nights = sleep_plan.plan_week(
+    first_night, coming,
+    db.get_plan(email, first_night.isoformat(), (first_night + timedelta(days=7)).isoformat()),
+    personal.sleep_habits(days, time_zone),
+    None if pd.isna(latest.get("sleep_need_hours")) else latest["sleep_need_hours"], time_zone,
+)
+checkins = db.get_checkins(email)  # None until the checkins table exists
+found_patterns = patterns.find(days, workouts, exam_history, time_zone)
+today_facts = facts.daily(days=days, workouts=workouts, checkins=checkins or [], nights=nights,
+                          patterns=found_patterns, exams=agent.upcoming_exams(coming, today), today=today,
+                          time_zone=time_zone)
+
+
 # ---------- 1. Today: ring + tiles ----------
 zone_label, _, advice = charts.zone(latest["recovery_score"])
 zone_color = {charts.ZONES[0]: charts.GREEN, charts.ZONES[1]: charts.YELLOW, charts.ZONES[2]: charts.RED}.get(
@@ -298,6 +331,58 @@ with st.container(key="card-today"):
                     compared_to="so far today" if latest["date"].date() == today else "that day",
                     trend=recent["day_strain"].tolist()),
         ))
+
+
+# ---------- 2. Body check (rule R1) + the morning check-in (rules R3 and B2) ----------
+@st.fragment
+def checkin_card():
+    """The 10-second check-in. Tapping answers only redraws this card; saving redraws the page,
+    because the check-in changes today's limits."""
+    with st.container(key="card-checkin", height="stretch"):
+        ui.label("Morning check-in · 10 seconds", "self_improvement", "checkin")
+        if checkins is None:
+            st.caption(":material/database: The check-in needs one database update: run the bottom of schema.sql "
+                       "in Supabase's SQL Editor.")
+            return
+        saved = today_facts["checkin_row"]
+        if saved and not st.session_state.get("edit_checkin"):
+            ui.draw(ui.checkin_summary(today_facts["checkin"], today_facts["pain"]))
+            if st.button("Change answers", icon=":material/edit:", key="checkin-edit"):
+                st.session_state.edit_checkin = True
+                st.rerun(scope="fragment")
+            return
+        before = saved or (checkins[0] if checkins else {})  # start from the last answers, so it's a few taps
+        answers = {}
+        for key, name, low, high in [("energy", "Energy", "drained", "great"), ("stress", "Stress", "calm", "high"),
+                                     ("soreness", "Soreness", "none", "a lot"), ("sleep_quality", "Sleep", "awful", "great")]:
+            name_spot, pick_spot = st.columns([1.3, 2], vertical_alignment="center")
+            name_spot.markdown(f"**{name}**  \n<span class='ck-hint'>1 {low} · 5 {high}</span>", unsafe_allow_html=True)
+            answers[key] = pick_spot.segmented_control(name, [1, 2, 3, 4, 5], default=before.get(key) or 3,
+                                                       key=f"ck-{key}", label_visibility="collapsed")
+        pain = st.slider("Any pain? 0 = none", 0, 10, value=(saved or {}).get("pain") or 0, key="ck-pain")
+        where, flags = None, {"pain_one_spot": False, "pain_at_rest": False, "pain_worse": False}
+        if pain:
+            side_spot, place_spot = st.columns(2)
+            side = side_spot.selectbox("Side", ["Left", "Right", "Both", "Middle"], key="ck-side")
+            place = place_spot.selectbox("Where", PAIN_PLACES, key="ck-place")
+            where = f"{side} {place.lower()}"
+            flags["pain_one_spot"] = st.checkbox("It hurts when I press one spot on the bone", key="ck-spot")
+            flags["pain_at_rest"] = st.checkbox("It hurts at rest or at night", key="ck-rest")
+            flags["pain_worse"] = st.checkbox("It got worse over my last 2 runs", key="ck-worse")
+        if st.button("Save check-in", icon=":material/check:", type="primary", key="checkin-save"):
+            db.save_checkin({"email": email, "date": today.isoformat(), "pain": pain, "pain_where": where,
+                             **{key: value or 3 for key, value in answers.items()}, **flags})
+            st.session_state.edit_checkin = False
+            st.rerun()
+
+
+st.write("")
+body_side, checkin_side = st.columns([1.55, 1], gap="medium")
+with body_side.container(key="card-body", height="stretch"):
+    ui.label("Body check · 4 signals vs. your normal", "monitor_heart", "body")
+    ui.draw(ui.body_check(today_facts["engine"], today_facts["hrv"], today_facts["resting"]))
+with checkin_side:
+    checkin_card()
 
 
 # ---------- Google Calendar events ----------
@@ -336,7 +421,7 @@ def calendar_blocks(first_day, plan_rows):
 blocks, calendar_error = calendar_blocks(monday, plan.values())  # this week (for today's list)
 
 
-# ---------- 2. The coach + today's calendar ----------
+# ---------- 3. The coach + today's calendar ----------
 st.write("")
 coach_side, agenda_side = st.columns([1.55, 1], gap="medium")
 
@@ -388,18 +473,26 @@ with coach_side.container(key="card-coach", height="stretch"):
                     + (f'<div class="when"><span class="msr">schedule</span>{html.escape(when)}</div>' if when else ""))
             # The coach's first line repeats the workout, so show only the explanation after it.
             first_line, _, explanation = latest_run["final_decision"].partition("\n")
-            st.write(ui.plain(explanation.strip() or first_line))
+            st.markdown(ui.coach_text(explanation.strip() or first_line), unsafe_allow_html=True)
             tags = []
             if today_row.get("event_status") == "added":
                 tags.append(("event_available", "Added to Google Calendar", "on-cal"))
             if (today_row.get("adjusted_workout") and today_row.get("planned_workout")
                     and today_row["adjusted_workout"] != today_row["planned_workout"]):
                 tags.append(("edit_calendar", "Adjusted by the coach", ""))
-            ui.draw(ui.badges(tags))
+            size = facts.run_size(saved_workout or "")
+            spike = today_facts["limits"]["spike"]
+            percent = facts.spike_percent(size, spike) if size else None
+            if percent:
+                tags.append(("speed", f"Spike check: {percent}% of your 30-day longest", "spike" if percent > 110 else ""))
+            if any(step["kind"] == "check" and step["passed"] for step in latest_run["steps"]):
+                tags.append(("verified", "Checked by code", ""))
+            ui.draw(ui.badges(tags) + ui.rules_used(latest_run["final_decision"]))
         else:
             ui.draw('<div class="headline">Ready when you are</div>')
             st.write("Press **Plan my day** and the coach will read your WHOOP data, check the weather and your "
                      "calendar, and decide today's workout.")
+        ui.draw(ui.limits_strip(today_facts["limits"]))
     with approval_spot:
         calendar_box(email, plan, calendar_connected, time_zone)
     if latest_run:
@@ -430,27 +523,18 @@ with agenda_side.container(key="card-agenda", height="stretch"):
         ui.draw(ui.agenda(todays))
 
 
-# ---------- 3. Sleep plan: when to go to bed and wake up ----------
+# ---------- 4. Sleep plan: when to go to bed and wake up, and how regular sleep has been ----------
 st.write("")
-first_night = sleep_plan.tonight(now)
-morning_events = []
-if calendar_connected:
-    try:
-        morning_events = sleep_events(email, (first_night + timedelta(days=1)).isoformat(), str(time_zone))
-    except requests.HTTPError:
-        pass  # without the calendar, wake-up times assume nothing early
-nights = sleep_plan.plan_week(
-    first_night, morning_events,
-    db.get_plan(email, first_night.isoformat(), (first_night + timedelta(days=7)).isoformat()),
-    personal.sleep_habits(days, time_zone),
-    None if pd.isna(latest.get("sleep_need_hours")) else latest["sleep_need_hours"], time_zone,
-)
 ui.label("Sleep plan · tonight and the week ahead", "bedtime", "sleep")
 with st.container(key="card-sleep"):
     ui.draw(ui.sleep_card(nights, now))
+st.write("")
+with st.container(key="card-regular"):
+    ui.draw(ui.regularity_card(today_facts["regularity"], today_facts["regularity_before"],
+                               personal.sleep_nights(days, time_zone, today)))
 
 
-# ---------- 4. The week, on the calendar (last week, this week, or next week) ----------
+# ---------- 5. The week, on the calendar (last week, this week, or next week) ----------
 st.write("")
 label_spot, week_spot = st.columns([2.2, 1.6], vertical_alignment="center")
 choice = week_spot.segmented_control(
@@ -509,7 +593,7 @@ with st.container(key="card-week"):
             f'<div class="note">The coach only adds a workout after you approve it.</div></div>')
 
 
-# ---------- 5. Trends ----------
+# ---------- 6. Trends ----------
 st.write("")
 label_spot, range_spot, refresh_spot = st.columns([2.2, 1.6, 1], vertical_alignment="center")
 span = range_spot.segmented_control(
@@ -551,6 +635,14 @@ if this_week["planned"] > 0:
 else:
     run_note = ('<div class="run-note"><span class="msr">info</span>No runs planned this week yet. '
                 'Ask the coach, or press Plan my day.</div>')
+spike = today_facts["limits"]["spike"]
+if spike["longest_miles"]:
+    run_note += (f'<div class="run-note"><span class="msr">speed</span><span>Longest run in the last 30 days: '
+                 f'{spike["longest_miles"]:g} mi, so no single run goes over {spike["limit_miles"]:g} mi'
+                 f'{ui.rule_chip("L1")}</span></div>')
+elif spike["starting_back"]:
+    run_note += ('<div class="run-note"><span class="msr">speed</span><span>No runs in the last 30 days, so runs '
+                 f'start back at 25 minutes of run/walk{ui.rule_chip("L1")}</span></div>')
 goal = profile.get("goal") or "Set a goal on your Coaching profile"
 if profile.get("goal_date"):
     goal_day = date.fromisoformat(profile["goal_date"])
@@ -617,14 +709,11 @@ with st.expander("More charts", icon=":material/stacked_line_chart:"):
             st.altair_chart(weekdays, width="stretch", alt="Bar chart of average recovery by weekday.")
 
 
-# ---------- 6. Insights ----------
+# ---------- 7. What moves your recovery: five questions with honest ranges (rules P1-P3) ----------
 st.write("")
-ui.label("Insights · patterns in your own data", "lightbulb", "insights")
-found = charts.insights(shown, shown_workouts, time_zone)
-if found:
-    ui.draw(ui.insight_cards(found))
-else:
-    st.info("Not enough data for patterns in this time range yet. Try 30 or 90 days.", icon=":material/info:")
+ui.label("What moves your recovery · your last 90 days", "lightbulb", "insights")
+with st.container(key="card-patterns"):
+    ui.draw(ui.patterns_card(found_patterns))
 st.write("")
 
 with st.expander("See every number as a table", icon=":material/table_chart:"):

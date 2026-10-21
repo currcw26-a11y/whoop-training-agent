@@ -1,4 +1,4 @@
-# charts.py: the dashboard's charts and "insights".
+# charts.py: the dashboard's charts.
 #
 # Built with Altair, the charting library that comes with Streamlit.
 # The same design rules apply to every chart (and match the demo page):
@@ -370,64 +370,3 @@ def weekday_chart(days):
         tooltip=[alt.Tooltip("weekday:N", title="Day"), alt.Tooltip("recovery_score:Q", title="Average recovery %")],
     )
     return _finish(chart, 200)
-
-
-def insights(days, workouts, time_zone):
-    """Plain-English findings from the person's own data. Each needs enough data to be fair.
-    Returns a list of (icon, title, headline, explanation, how_many) - short, so the cards line up."""
-    found = []
-    mornings = days.dropna(subset=["recovery_score"]).sort_values("date")
-
-    # 1. Does a full night of sleep help their recovery?
-    long_nights = mornings[mornings["sleep_hours"] >= 7]["recovery_score"]
-    short_nights = mornings[mornings["sleep_hours"] < 7]["recovery_score"]
-    if len(long_nights) >= 3 and len(short_nights) >= 3:
-        found.append(("bedtime", "Sleep", f"{long_nights.mean():.0f}% vs {short_nights.mean():.0f}%",
-                      "Your recovery after 7+ hours of sleep, compared with shorter nights.",
-                      f"{len(long_nights)} vs {len(short_nights)} nights"))
-
-    # 2. How do they bounce back after a hard day? (strain of 14+, then the next morning's recovery)
-    by_date = mornings.set_index("date")["recovery_score"]
-    after_hard, after_easy = [], []
-    for _, day in mornings.iterrows():
-        next_morning = by_date.get(day["date"] + pd.Timedelta(days=1))
-        if next_morning is None or pd.isna(day["day_strain"]):
-            continue
-        (after_hard if day["day_strain"] >= 14 else after_easy).append(next_morning)
-    if len(after_hard) >= 2 and len(after_easy) >= 3:
-        found.append(("local_fire_department", "After hard days",
-                      f"{sum(after_hard) / len(after_hard):.0f}% vs {sum(after_easy) / len(after_easy):.0f}%",
-                      "Your recovery the morning after a day with strain of 14+, compared with easier days.",
-                      f"{len(after_hard)} hard days"))
-
-    # 3. Does going to bed before midnight help?
-    def before_midnight(start):
-        return pd.notna(start) and datetime.fromisoformat(start).astimezone(time_zone).hour >= 18
-    early = mornings[mornings["sleep_start"].map(before_midnight)]["recovery_score"]
-    late = mornings[~mornings["sleep_start"].map(before_midnight) & mornings["sleep_start"].notna()]["recovery_score"]
-    if len(early) >= 3 and len(late) >= 3:
-        found.append(("dark_mode", "Bedtime", f"{early.mean():.0f}% vs {late.mean():.0f}%",
-                      "Your recovery when you fell asleep before midnight, compared with after.",
-                      f"{len(early)} vs {len(late)} nights"))
-
-    # 4. The 80/20 rule: most training time should be easy.
-    easy = hard = 0.0
-    for zones in workouts.get("zone_minutes", pd.Series(dtype=object)):
-        if isinstance(zones, list) and len(zones) >= 6:
-            easy += zones[1] + zones[2]
-            hard += zones[3] + zones[4] + zones[5]
-    if easy + hard >= 60:
-        found.append(("favorite", "Easy vs hard", f"{100 * easy / (easy + hard):.0f}% easy",
-                      "Share of your workout time in easy heart-rate zones. Coaches suggest about 80%.",
-                      f"{(easy + hard) / 60:.0f} hours of workouts"))
-
-    # 5. HRV this week compared with the weeks before.
-    hrv = days.dropna(subset=["hrv_ms"]).sort_values("date")
-    if len(hrv) >= 14:
-        recent, before = hrv.tail(7)["hrv_ms"].mean(), hrv.iloc[:-7]["hrv_ms"].mean()
-        change = 100 * (recent - before) / before
-        meaning = ("Rising, a sign you're adapting well." if change >= 3
-                   else "Dipping, so recovery matters this week." if change <= -3 else "Holding steady.")
-        found.append(("monitor_heart", "HRV trend", f"{change:+.0f}%",
-                      f"Your HRV this week compared with before. {meaning}", f"{recent:.0f} vs {before:.0f} ms"))
-    return found

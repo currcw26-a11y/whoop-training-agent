@@ -27,29 +27,52 @@ PER_VISITOR = (12, 5 * 60)     # at most 12 messages per 5 minutes from one brow
 PER_NETWORK = (200, 5 * 60)    # and 200 from one internet address (a whole class on campus Wi-Fi shares one)
 PER_SERVER_HOUR = 1000         # and 1,000 an hour in all (the key's spending limit is the real cap)
 
+# ---------- The rules (the same IDs and sentences as facts.py in the real app) ----------
+
+RESEARCH_RULES = {
+    "R1": "Check engine light: If 2+ of resting heart rate, breathing rate, skin temperature, and HRV are outside your normal range, today is easy; 3+, or 2+ two days in a row, means rest.",
+    "R2": "Readiness trend: HRV and resting heart rate are judged by their 7-day average against your normal range: HRV below and resting HR above means easy days until they're back. A red recovery means easy; red on 2 of the last 3 days means rest.",
+    "R3": "Morning check-in: How you say you feel counts: a low check-in plus any body signal that's off means an easy day.",
+    "R4": "Short sleep: After 6 hours of sleep or less, afternoon and evening workouts stay easy and morning ones moderate.",
+    "L1": "Spike guard: No run longer than 110% of your longest run in the 30 days before it.",
+    "L3": "Weekly build: Weekly running grows no more than about 30% over two weeks. 10% a week is a comfortable default, not a proven rule.",
+    "B1": "Mostly easy: About 80% of training time easy (heart-rate zones 1-2), at least 2 rest or cross-training days a week, and at most one faster session a week for newer runners, only on a good day. Run/walk is fine.",
+    "B2": "Pain check: Pain on one spot of the bone, pain at rest or at night, pain getting worse, or 5+/10 means no running and see an athletic trainer; 3-4/10, or pain still there the morning after a run, means cross-training at the same effort until it's gone.",
+    "S1": "Steady sleep: Keep bedtimes and wake-up times steady; students with more regular sleep earned better grades.",
+    "S3": "Sleep target: At least 7 hours of sleep, more when WHOOP says you need it.",
+    "S4": "Caffeine and late workouts: Last coffee 9 hours before bedtime, energy drinks or pre-workout 13 hours before, and hard workouts over at least 2 hours before bedtime.",
+    "A2": "Exams: No hard session within 2 days before an exam and nothing in the 2 hours before it; keep wake-up times steady and protect sleep the whole week before.",
+    "W1": "Weather: Move runs away from thunderstorms, heavy rain, ice, and feels-like temperatures above about 90°F or below about 20°F, or go indoors.",
+    "P3": "Your patterns: A consistent pattern in your own data can make a day easier, never harder.",
+}
+
 # ---------- The instructions (a shorter version of agent.py's) ----------
 
 RULES = """You are the coach inside Training Coach, a website that coaches one person from their WHOOP data, the weather, their Google Calendar, and their training plan. This is the public DEMO, used in a class presentation: the person is Clive Curry, a Wake Forest freshman, and everything you see is sample data. Anything you change lasts only for this visitor's visit.
 
-What makes you worth using is that you know this person. Generic advice ("stay hydrated", "listen to your body", "sleep is important") is useless, so never give it on its own. Tie every recommendation to something specific: his numbers compared with HIS normal (get_personal_patterns), a pattern in his data, a named event on his calendar ("your CHM 111 midterm at 10"), his goal, or something he told you (the notes under "What you remember"). When you quote a number, say what it's compared with.
+What makes you worth using is that you know this person. Generic advice ("stay hydrated", "listen to your body", "sleep is important") is useless, so never give it on its own. Tie every recommendation to something specific: his numbers compared with HIS normal, a pattern in his data, a named event on his calendar ("your CHM 111 midterm at 10"), his goal, or something he told you (the notes under "What you remember"). When you quote a number, say what it's compared with.
 
-How to decide (from sports and sleep research):
-- Readiness: WHOOP recovery 67-100% green, 34-66% yellow, 0-33% red. Judge HRV and resting heart rate by the 7-day average against his normal range, not one morning. Below his HRV range (or resting HR above its range) means keep the week easy.
-- Red on 2 of the last 3 days, or recovery falling for days: rest or very easy movement. Avoid two hard days in a row; club tennis counts as training.
-- About 80% of training easy. A newer runner gets at most one harder session a week, only on a green day after decent sleep.
-- Build slowly: about 10% more running a week, never more than about 30% over two weeks. At least 2 rest or cross-training days a week. Longest run on his freest day.
-- Sleep: use get_sleep_plan's exact bedtime and wake-up time. Steady wake-up times matter. No caffeine within about 6 hours of bedtime. No hard workout ending within an hour of bedtime.
-- Exams: keep training easy and short around exams, never right before one, and protect sleep the night before.
-- Weather: avoid storms, heavy rain, ice, and feels-like temperatures above about 90°F or below about 20°F.
-- Safety: training suggestions, not medical advice. For pain, illness signs, or several red days, recommend rest and seeing a doctor or athletic trainer if it continues.
+How you work: code decides, you explain.
+- The latest message starts with TODAY'S FACTS, worked out by code from his data: today's limits and why, the check engine light (4 body signals against his normal), his 7-day HRV and resting heart rate, his morning check-in and any pain, the spike guard, tonight's sleep times, exams coming up, and what moves his recovery. Quote these numbers; don't redo the math.
+- Never go over today's limits: the max intensity, whether running is allowed, and the longest run allowed. update_training_plan and save_daily_log turn down workouts that break them, and update_training_plan checks every planned run against the spike guard [L1].
+- Cite the rules behind each recommendation (a workout, a change to the plan, a bedtime, a caffeine time) with their IDs in square brackets at the end of the sentence, like "Keep it to 3.5 miles [L1]." Use only the IDs listed below.
+- Say how sure a pattern is with the facts' own label ("possible pattern", "consistent pattern", "no clear difference yet"). Patterns are "linked to", never "caused by", and they may make a day easier, never harder [P3].
+- If the facts and your tools don't have something, say you don't have that data instead of guessing.
+- An automatic checker reads your reply before anyone sees it. It sends it back if you name a medical condition, leave out rule IDs, go over a limit, give a bedtime or caffeine time that isn't in the sleep plan, or leave out the doctor line when it's needed.
+
+The rules (from sports and sleep research; the IDs are what you cite):
+""" + "\n".join(f"- {rule} {text}" for rule, text in RESEARCH_RULES.items()) + """
+Also: WHOOP recovery 67-100% is green, 34-66% yellow, 0-33% red. Club tennis counts as training, so avoid two hard days in a row. Put the longest run on his freest day.
+
+Safety: training suggestions, not medical advice. Never name a condition (like shin splints, a stress fracture, the flu, or COVID), even as a guess; describe the warning sign and suggest an athletic trainer or doctor. When the check engine light says rest or the pain light is red, always add that he should check in with a doctor or athletic trainer if it continues.
 
 Memory: if he tells you something that should shape future coaching (an injury, a preference, a weekly commitment), save it with remember_about_them as one short sentence without a date.
 
 This is a demo for classmates. Stay his training, sleep, and recovery coach; if someone asks for anything else (homework, code, other topics), say in one line that you're Clive's training coach and suggest a coaching question they could try. If asked, say plainly that this is sample data. Dates are YYYY-MM-DD and the date in the latest message is today. Tools use a 24-hour clock, but write times like "9:20 PM"."""
 
-PLAN_STEPS = """This run: plan today. Call get_whoop_recovery, get_whoop_sleep, get_personal_patterns, get_sleep_plan, get_weather, get_training_plan, and get_calendar_events together first. Decide today's workout (keep it, make it easier, swap days with update_training_plan, or rest). If it's a workout, pick a free time today with create_calendar_event (only a suggestion; it shows dashed on the calendar until he approves). Then call save_daily_log once. Reply: first line = today's workout in a few words; then 2 to 3 short sentences on why, using his numbers against his normal and his calendar; end with tonight's bedtime if sleep matters. Under 90 words, plain text, no bullets."""
+PLAN_STEPS = """This run: plan today. Call get_whoop_recovery, get_whoop_sleep, get_personal_patterns, get_sleep_plan, get_weather, get_training_plan, and get_calendar_events together first. Decide today's workout (keep it, make it easier, swap days with update_training_plan, or rest). If it's a workout, pick a free time today with create_calendar_event (only a suggestion; it shows dashed on the calendar until he approves). Decide within today's limits; if running isn't allowed, swap the run for cross-training at the same effort. Then call save_daily_log once. Reply: first line = today's workout in a few words (no rule IDs on that line); then 2 to 3 short sentences on why, using his numbers against his normal and his calendar, each ending with the IDs of the rules it follows, like [R1] or [L1, B1]; end with tonight's bedtime if sleep matters [S3]. Under 100 words, plain text, no bullets."""
 
-CHAT_STEPS = """This run: a visitor is messaging the coach. Answer what they asked directly, like a good coach texting back. Look things up with tools whenever the answer depends on the data, plan, calendar, sleep, or weather; never guess numbers, and call only the tools you need (several at once when you can). To change future days use update_training_plan; to change today's workout also use save_daily_log; say what you changed. For a goal, save it with set_goal and write the plan with update_training_plan (the plan only goes through the end of next week in this demo). Under 120 words. Short "- " bullet lists are fine; no headings or tables."""
+CHAT_STEPS = """This run: a visitor is messaging the coach. Answer what they asked directly, like a good coach texting back. Look things up with tools whenever the answer depends on the data, plan, calendar, sleep, or weather; never guess numbers, and call only the tools you need (several at once when you can). Answer questions without changing anything; change the plan only when they ask you to or agree to it (future days with update_training_plan, today's workout with save_daily_log), and say what you changed, with the rule IDs behind it. If they ask for more than the limits allow (like a run longer than the spike guard allows), say no kindly, give the most he can do instead, and say why with the rule ID. For a goal, save it with set_goal and write the plan with update_training_plan (the plan only goes through the end of next week in this demo). Under 120 words. Short "- " bullet lists are fine; no headings or tables."""
 
 # ---------- The tools ----------
 
@@ -63,18 +86,18 @@ TOOLS = [
     {"name": "get_whoop_sleep", "description": "Recent nights, newest first: hours asleep vs. needed, deep/REM/light/awake hours, bedtime, and wake time.", "input_schema": _days()},
     {"name": "get_whoop_strain", "description": "Daily WHOOP strain (0-21, how hard the whole day was), newest first.", "input_schema": _days()},
     {"name": "get_whoop_workouts", "description": "Recorded workouts (sport, miles, minutes) for the last 14 days, and running miles this week and last week.", "input_schema": NO_INPUT},
-    {"name": "get_personal_patterns", "description": "What's normal for THIS person: 7-day HRV and resting heart rate vs. his own normal range, usual sleep, training load, and patterns found in his last 90 days. Use it to make advice personal.", "input_schema": NO_INPUT},
-    {"name": "get_sleep_plan", "description": "Recommended bedtime, wake-up time, and caffeine cutoff for tonight and the next 6 nights, from his sleep need, sleep efficiency, usual wake time, and first event each morning.", "input_schema": NO_INPUT},
+    {"name": "get_personal_patterns", "description": "What's normal for THIS person: 7-day HRV and resting heart rate vs. his own normal range, usual sleep, training load, and what moves his recovery (five fixed questions from his last 90 days, each with a likely range and how sure it is). Use it to make advice personal.", "input_schema": NO_INPUT},
+    {"name": "get_sleep_plan", "description": "Recommended bedtime and wake-up time for tonight and the next 6 nights, from his sleep need (at least 7 hours), sleep efficiency, usual wake time, and first event each morning. Also his last-coffee time, energy-drink time, and when hard workouts should be over [S4].", "input_schema": NO_INPUT},
     {"name": "get_weather", "description": "Today's and tomorrow's forecast in Winston-Salem, with an hour-by-hour list for today.", "input_schema": NO_INPUT},
     {"name": "get_calendar_events", "description": "His Google Calendar from today: each day's events (24-hour times) and free windows of 30+ minutes between 06:00 and 21:00, marked if they're in the times he likes to run (6-9am, 3-6pm).", "input_schema": _days("How many days to look at, starting today, 1 to 7. Default 2.")},
     {"name": "get_training_plan", "description": "The plan from today through the end of next week: each day's workout.", "input_schema": NO_INPUT},
     {"name": "get_training_history", "description": "The last 10 days of the plan and whether each was done.", "input_schema": NO_INPUT},
-    {"name": "update_training_plan", "description": "Change planned workouts for today through the end of next week. A date that already has a workout gets replaced.",
+    {"name": "update_training_plan", "description": "Change planned workouts for today through the end of next week. A date that already has a workout gets replaced. Every run is checked against the spike guard [L1] (at most 110% of the longest run in the 30 days before it, counting earlier planned runs as done) and today's workout against today's limits; workouts that break them are turned down with the reason. Write run distances in miles.",
      "input_schema": {"type": "object", "properties": {"workouts": {"type": "array", "items": {"type": "object", "properties": {
          "date": {"type": "string", "description": "YYYY-MM-DD"},
          "workout": {"type": "string", "description": "Like 'Easy run, 2.5 miles' or 'Rest day'"}}, "required": ["date", "workout"]}}},
          "required": ["workouts"]}},
-    {"name": "save_daily_log", "description": "Save today's final workout decision (shown in the 'Today's workout' card).",
+    {"name": "save_daily_log", "description": "Save today's final workout decision (shown in the 'Today's workout' card). It's turned down if it breaks today's limits (intensity, running allowed, longest run).",
      "input_schema": {"type": "object", "properties": {
          "workout": {"type": "string", "description": "Like 'Easy run, 2 miles at 7:00 AM'"},
          "reason": {"type": "string", "description": "One or two sentences with the key numbers"}}, "required": ["workout", "reason"]}},
@@ -130,6 +153,115 @@ def _weekday(iso):
     return time.strftime("%a", time.strptime(iso, "%Y-%m-%d"))
 
 
+def _days_between(first, second):
+    return round((time.mktime(time.strptime(second, "%Y-%m-%d")) - time.mktime(time.strptime(first, "%Y-%m-%d"))) / 86400)
+
+
+# ---------- The same limit rules as facts.py ----------
+
+LEVELS = ["rest", "easy", "moderate", "hard"]
+MILES = re.compile(r"(\d+(?:\.\d+)?)\s*(?:mi\b|miles?\b)", re.IGNORECASE)
+
+
+def is_run(text):
+    words = (text or "").lower()
+    return bool(re.search(r"\b(run|jog)", words)) and not re.search(r"\bno run", words)
+
+
+def run_miles(text):
+    found = MILES.search(text or "")
+    return float(found.group(1)) if found and is_run(text) else None
+
+
+def intensity(text):
+    """How hard a workout written in words is: rest, easy, moderate, or hard."""
+    words = (text or "").lower()
+    if re.match(r"\s*(rest|off|day off)\b", words):
+        return "rest"
+    words = re.sub(r"\b(no|not|avoid|skip|without)\s+(\w+\s+)?(hard|intervals?|tempo|speed)\b", "", words)
+    if re.search(r"\b(intervals?|tempo|threshold|speed ?work|fartlek|hill repeats?|repeats|race[- ]pace|time trial|vo2|sprints?|hard)\b", words):
+        return "hard"
+    if re.search(r"\b(moderate|steady|strides|progression|pick-?ups?)\b", words):
+        return "moderate"
+    if re.search(r"\b(tennis|soccer|basketball|volleyball|pickup|game|match|lifting|weights|strength|crossfit|hiit)\b", words) \
+            and not re.search(r"\b(light|easy|gentle)\b", words):
+        return "moderate"
+    if not re.search(r"\b(run|jog|bike|biking|cycl|swim|row|elliptical|spin|tennis|soccer|basketball|lift|strength|weights|hiit|workout|training)", words):
+        return "rest"
+    return "easy"
+
+
+# ---------- The checker (the same checks as checker.py) ----------
+
+CONDITIONS = re.compile(
+    r"\b(stress fractures?|shin splints|tendini?tis|tendonitis|plantar fasciitis|it band syndrome|runner'?s knee|"
+    r"covid(?:-19)?|the flu|influenza|an infection|a virus|overtraining syndrome|mononucleosis|mono|strep|"
+    r"pneumonia|anemia|asthma|a sprain|a fracture)\b", re.IGNORECASE)
+SICK = re.compile(r"\byou(?:'re| are)(?: probably| likely)? (?:getting |coming down with |)sick\b|\bhe(?:'s| is)(?: probably| likely)? (?:getting |coming down with |)sick\b", re.IGNORECASE)
+NOT_A_DIAGNOSIS = re.compile(r"(can'?t|cannot|not|n't|whether|if|rule out|no way to|unable to|only a|a doctor can|an athletic trainer can)\b[^.]{0,40}$", re.IGNORECASE)
+SEE_SOMEONE = re.compile(r"\b(doctor|athletic trainer|physician|student health|health center|nurse)\b", re.IGNORECASE)
+CITED = re.compile(r"\[([A-Z]\d(?:\s*,\s*[A-Z]\d)*)\]")
+TIME = r"(\d{1,2}:\d{2}\s*[AaPp]\.?\s?[Mm]\.?)"
+BEDTIME = re.compile(r"\b(?:bedtime|in bed|to bed|lights[- ]out|asleep by|sleep by)\b([^\d.!?]{0,20}?)" + TIME, re.IGNORECASE)
+CAFFEINE = re.compile(r"\b(?:coffee|caffeine|energy drinks?|pre-?workout)\b([^\d.!?]{0,25}?)" + TIME, re.IGNORECASE)
+NOT_THAT_TIME = re.compile(r"\b(wake|up at|alarm|until|class|run|workout)\b", re.IGNORECASE)
+CHECKS = 9
+
+
+def _time(text):
+    found = re.match(r"(\d{1,2}):(\d{2})\s*([AaPp])", text)
+    return f"{int(found.group(1))}:{found.group(2)} {found.group(3).upper()}M"
+
+
+def check(reply, facts, mode, saved_workout):
+    """Problems with one reply (an empty list means it passed). facts: the packet the page sent."""
+    problems, caps = [], facts.get("_caps") or {}
+    for found in list(CONDITIONS.finditer(reply)) + list(SICK.finditer(reply)):
+        if not NOT_A_DIAGNOSIS.search(reply[max(0, found.start() - 60):found.start()]):
+            problems.append(f"It names a medical condition ('{found.group(0)}'). Don't diagnose: describe the warning sign and suggest an athletic trainer or doctor.")
+            break
+    cited = [rule.strip() for group in CITED.findall(reply) for rule in group.split(",")]
+    unknown = sorted(set(cited) - set(RESEARCH_RULES))
+    if unknown:
+        problems.append(f"It cites rule IDs that don't exist: {', '.join(unknown)}. Use only the listed IDs.")
+    if (mode == "plan" or saved_workout) and not cited:
+        problems.append("It recommends a workout without citing the rules it follows. End those sentences with rule IDs in square brackets, like [R1, L1].")
+    if saved_workout and caps:
+        level = intensity(saved_workout)
+        if LEVELS.index(level) > LEVELS.index(caps.get("max", "hard")):
+            problems.append(f"Today's workout ('{saved_workout}') is {level}, but today's limit is {caps['max']}. Change it with save_daily_log.")
+        if not caps.get("running", True) and is_run(saved_workout):
+            problems.append(f"Today's workout ('{saved_workout}') is a run, but running isn't allowed today [B2].")
+        miles = run_miles(saved_workout)
+        if miles and caps.get("exact") and miles > caps["exact"] + 0.01:
+            problems.append(f"Today's run is {miles:g} miles, over the spike guard's {caps['limit']:g} miles [L1].")
+    if facts.get("_rest_or_red") and not SEE_SOMEONE.search(reply):
+        problems.append("Today's facts call for rest or a pain warning, so the reply must suggest checking in with a doctor or athletic trainer if it continues.")
+    bedtimes, cutoffs = set(facts.get("_bedtimes") or []), set(facts.get("_cutoffs") or [])
+    for gap, said in BEDTIME.findall(reply):
+        if bedtimes and not NOT_THAT_TIME.search(gap) and _time(said) not in bedtimes:
+            problems.append(f"It gives a bedtime of {_time(said)}, but the sleep plan's bedtimes are {', '.join(sorted(bedtimes))}. Use get_sleep_plan's exact times.")
+    for gap, said in CAFFEINE.findall(reply):
+        if cutoffs and not NOT_THAT_TIME.search(gap) and _time(said) not in cutoffs:
+            problems.append(f"It gives a caffeine time of {_time(said)}, which isn't in the sleep plan [S4].")
+    return problems
+
+
+def fallback(facts, mode):
+    """A plain reply from the facts alone, if the checker still finds problems after one retry."""
+    limits = facts.get("limits_for_today") or {}
+    head = {"rest": "Rest day", "easy": "Easy day", "moderate": "Moderate at most today", "hard": "Follow the plan"}
+    reasons = [f"{reason[5:]} [{reason[1:3]}]." for reason in (limits.get("because") or [])[:2] if reason.startswith("[")]
+    sleep = facts.get("sleep") or {}
+    if sleep.get("tonight_in_bed_by"):
+        reasons.append(f"Tonight, be in bed by {sleep['tonight_in_bed_by']} [S3].")
+    if facts.get("_rest_or_red"):
+        reasons.append("If it continues, check in with a doctor or athletic trainer.")
+    if mode == "plan":
+        return f"{head.get(limits.get('max_intensity'), 'Easy day')}\n{' '.join(reasons)}"
+    return "I couldn't double-check a full answer to that, so here's what the data says today: " + " ".join(reasons)
+
+
 # ---------- What each tool does (on the sample data the page sent) ----------
 
 class Demo:
@@ -140,6 +272,44 @@ class Demo:
         self.today = data["today"]
         self.now = _minutes(data["now"])
         self.changes = {"plan": {}, "suggested": None, "today": None, "notes": [], "goal": None}
+        self.facts = data.get("facts") if isinstance(data.get("facts"), dict) else {}
+        self.caps = self.facts.get("_caps") or {}
+
+    def breaks_todays_limits(self, workout):
+        """Why a workout for today breaks today's limits, or None."""
+        if not self.caps:
+            return None
+        level = intensity(workout)
+        if LEVELS.index(level) > LEVELS.index(self.caps.get("max", "hard")):
+            why = "; ".join((self.facts.get("limits_for_today") or {}).get("because") or [])
+            return f"'{workout}' is {level}, but today's limit is {self.caps['max']} ({why})."
+        if not self.caps.get("running", True) and is_run(workout):
+            return f"'{workout}' is a run, but running isn't allowed today [B2]. Use cross-training at the same effort."
+        miles = run_miles(workout)
+        if miles and self.caps.get("exact") and miles > self.caps["exact"] + 0.01:
+            return f"'{workout}' is longer than the spike guard allows today: {self.caps['limit']:g} miles [L1]."
+        return None
+
+    def spike_problems(self, planned):
+        """The spike guard [L1] for the whole plan: each run at most 110% of the longest run in the
+        30 days before it, counting earlier planned runs as done. Returns {date: problem} for `planned`."""
+        history = [(run["date"], run["miles"]) for run in self.facts.get("_runs") or [] if run.get("miles")]
+        whole = {iso: self.workout(iso) for iso in self.future_dates(14)}
+        whole.update(planned)
+        problems = {}
+        for iso in sorted(whole):
+            miles = run_miles(whole[iso])
+            if not miles:
+                continue
+            window = [m for d, m in history if 0 < _days_between(d, iso) <= 30]
+            limit = 1.10 * max(window) if window else 2.0
+            if iso in planned and miles > limit + 0.01:
+                problems[iso] = (f"{_weekday(iso)} {iso}: '{whole[iso]}' is too long. The spike guard [L1] allows up to "
+                                 f"{int(limit * 10 + 1e-6) / 10:g} miles that day (longest run in the 30 days before it: "
+                                 f"{max(window) if window else 'none'} miles).")
+                continue
+            history.append((iso, miles))
+        return problems
 
     def calendar_day(self, iso):
         return next((d for d in self.data["calendar"] if d["date"] == iso), None)
@@ -225,19 +395,32 @@ class Demo:
 
     # --- Changes (sent back to the page) ---
     def update_training_plan(self, tool_input):
-        allowed, saved, skipped = set(self.future_dates(14)), 0, []
+        allowed, planned, skipped = set(self.future_dates(14)), {}, []
         for item in (tool_input.get("workouts") or [])[:14]:
             iso, text = str(item.get("date", "")), _short(item.get("workout", ""), 80)
             if iso in allowed and text:
-                self.changes["plan"][iso] = text
-                saved += 1
+                planned[iso] = text
             else:
                 skipped.append(iso)
-        return {"saved": saved, "skipped_dates_outside_the_plan": skipped,
+        problems = self.spike_problems(planned)
+        if self.today in planned and self.today not in problems:
+            problem = self.breaks_todays_limits(planned[self.today])
+            if problem:
+                problems[self.today] = problem
+        for iso, text in planned.items():
+            if iso not in problems:
+                self.changes["plan"][iso] = text
+        return {"saved": len(planned) - len(problems), "skipped_dates_outside_the_plan": skipped,
+                **({"turned_down": list(problems.values()),
+                    "what_to_do": "Shorten or swap the turned-down days and call update_training_plan again for them."} if problems else {}),
                 "note": "On changed days, the old workout blocks are taken off his calendar automatically."}
 
     def save_daily_log(self, tool_input):
-        self.changes["today"] = {"workout": _short(tool_input.get("workout", ""), 80), "reason": _short(tool_input.get("reason", ""), 400)}
+        workout = _short(tool_input.get("workout", ""), 80)
+        problem = self.breaks_todays_limits(workout)
+        if problem:
+            raise ValueError(f"Not saved: {problem} Pick a workout within today's limits.")
+        self.changes["today"] = {"workout": workout, "reason": _short(tool_input.get("reason", ""), 400)}
         return {"saved": True, "date": self.today}
 
     def create_calendar_event(self, tool_input):
@@ -288,8 +471,6 @@ def summary(name, tool_input, output):
             return f"latest day strain {output['days'][0]['day_strain']}"
         if name == "get_whoop_workouts":
             return f"{output['running_miles_this_week_so_far']} running miles this week ({output['running_miles_last_week']} last week)"
-        if name == "get_personal_patterns":
-            return f"HRV {output['hrv']['status']}, {len(output['patterns_in_his_data'])} patterns in his data"
         if name == "get_sleep_plan":
             night = output["nights"][0]
             return f"tonight: in bed by {night['bedtime']}, up at {night['wake_up']}"
@@ -302,8 +483,13 @@ def summary(name, tool_input, output):
             return f"{len(output['plan'])} days planned"
         if name == "get_training_history":
             return f"{len(output['history'])} past days"
+        if name == "update_training_plan" and output.get("turned_down"):
+            return f"changed {output['saved']} days; turned down {len(output['turned_down'])}: {output['turned_down'][0]}"
         if name == "update_training_plan":
             return f"changed {output['saved']} days of the plan"
+        if name == "get_personal_patterns":
+            found = sum(1 for p in output.get("what_moves_his_recovery", []) if p.get("finding"))
+            return f"HRV {output['hrv']['status']}, {found} of 5 recovery questions answered"
         if name == "save_daily_log":
             return f"saved today's decision: {tool_input.get('workout')}"
         if name == "create_calendar_event":
@@ -322,6 +508,8 @@ def summary(name, tool_input, output):
 def about_him(data):
     profile = data["profile"]
     notes = "\n".join(f"- {note}" for note in data["notes"]) or "- Nothing yet."
+    shown = {key: value for key, value in (data.get("facts") or {}).items() if not key.startswith("_")}  # _ keys are for the checker
+    facts = json.dumps(shown, ensure_ascii=False) if shown else "(none sent)"
     return f"""Today is {data['today_text']}, and it's {_clock(_minutes(data['now']))} where he lives (America/New_York).
 
 About him, in his own words:
@@ -333,7 +521,10 @@ About him, in his own words:
 - Location: Winston-Salem, North Carolina
 
 What you remember about him:
-{notes}"""
+{notes}
+
+TODAY'S FACTS (worked out by code from his data; never go over the limits):
+{facts}"""
 
 
 def coach(data, mode, message, earlier):
@@ -347,8 +538,13 @@ def coach(data, mode, message, earlier):
     request = "Plan today's training." if mode == "plan" else f"Their message:\n{message}"
     messages.append({"role": "user", "content": about_him(data) + "\n\n" + request})
 
-    steps, answer = [], None
-    for _ in range(MAX_STEPS):
+    caps = demo.caps
+    steps, answer, retried = [], None, False
+    if caps:
+        steps.append(["fact_check", None, f"Worked out today's facts in code: limit {caps.get('max')}"
+                      + (" · no running" if not caps.get("running", True)
+                         else "" if caps.get("max") == "rest" else f" · runs up to {caps.get('limit')} mi") + ".", "check"])
+    for _ in range(MAX_STEPS + 1):
         response = client.messages.create(
             model=MODEL, max_tokens=4000, system=RULES + "\n\n" + (PLAN_STEPS if mode == "plan" else CHAT_STEPS),
             tools=tools, messages=messages, thinking={"type": "adaptive", "display": "summarized"},
@@ -362,6 +558,22 @@ def coach(data, mode, message, earlier):
             break
         if response.stop_reason != "tool_use":
             answer = "".join(b.text for b in response.content if b.type == "text").strip() or "Done."
+            saved = (demo.changes["today"] or {}).get("workout")
+            problems = check(answer, demo.facts, mode, saved) if demo.facts else []
+            if problems and not retried:
+                retried = True
+                steps.append(["rule", None, "Checker caught: " + " ".join(problems) + " Sent back to the coach to fix.", "caught"])
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "user", "content": "An automatic check found problems with that reply, before anyone saw it:\n"
+                                 + "\n".join(f"- {p}" for p in problems)
+                                 + "\nFix them (use tools if the plan has to change), then write the whole reply again."})
+                answer = None
+                continue
+            if problems:
+                answer = fallback(demo.facts, mode)
+                steps.append(["rule", None, "Checker still found problems, so the reply was replaced with a plain one built only from today's facts.", "caught"])
+            elif demo.facts:
+                steps.append(["verified", None, f"Checker: passed all {CHECKS} checks" + (" on the second try." if retried else "."), "check"])
             break
         messages.append({"role": "assistant", "content": response.content})
         results = []
