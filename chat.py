@@ -54,6 +54,7 @@ for number, (question, answer, steps) in enumerate(turns):
         st.write(ui.plain(question))
     with st.container(key=f"msg-coach-{number}"), st.chat_message("assistant", avatar=":material/directions_run:"):
         st.markdown(ui.coach_text(answer), unsafe_allow_html=True)
+        ui.draw(ui.rules_used(answer))
         used = ui.tools_used(steps)
         if used:
             with st.expander(f"Looked at {used} thing{'s' if used != 1 else ''}", icon=":material/account_tree:"):

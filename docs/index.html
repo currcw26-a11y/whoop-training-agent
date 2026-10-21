@@ -1375,7 +1375,8 @@ function factsPacket() {
 // ---------- Rule chips: [R1, L1] in the coach's words become small chips; hover one for the rule ----------
 const ruleChip = id => (RULES[id] ? `<span class="rule" title="${esc(`${id} · ${RULES[id][0]}: ${RULES[id][1]} (${RULES[id][2]})`)}">${id}</span>` : esc(id));
 const CITED = /\s?\[([A-Z]\d(?:\s*,\s*[A-Z]\d)*)\]/g;
-const withRuleChips = safeHtml => safeHtml.replace(CITED, (_, ids) => ids.split(",").map(id => ruleChip(id.trim())).join(""));
+// The coach cites rules like [L1] in its text; they're left out of what you read and listed underneath instead.
+const withoutRuleIds = text => text.replace(CITED, "");
 function rulesUsed(text) {
   const ids = [...new Set([...(text || "").matchAll(CITED)].flatMap(m => m[1].split(",").map(id => id.trim())).filter(id => RULES[id]))];
   if (!ids.length) return "";
@@ -1598,7 +1599,7 @@ function showDecision(headline, when, why, steps, meta) {
   document.getElementById("headline").textContent = headline;
   document.getElementById("when-text").textContent = when;
   document.getElementById("when").hidden = !when;
-  document.getElementById("why").innerHTML = withRuleChips(esc(why));
+  document.getElementById("why").textContent = withoutRuleIds(why);
   document.getElementById("rules-used").innerHTML = rulesUsed(why);
   shownWorkout = headline + (when ? `, ${when}` : "");
   shownChecked = steps.some(s => s[3] === "check");
@@ -1961,7 +1962,7 @@ function stepsDetails(steps) {
 }
 // Turn the coach's plain text into HTML: paragraphs, "- " lists, and **bold**.
 function formatAnswer(text) {
-  const inline = s => withRuleChips(esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"));
+  const inline = s => esc(withoutRuleIds(s)).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
   let out = "", list = [];
   const flush = () => { if (list.length) { out += `<ul>${list.map(i => `<li>${inline(i)}</li>`).join("")}</ul>`; list = []; } };
   for (const line of text.split("\n")) {
@@ -2088,7 +2089,7 @@ async function sendMessage(text) {
     LIVE.push({ asked: text, answered: reply.answer });
     const labels = applyChanges(reply.changes);
     const chips = labels.length ? `<div class="changed">${labels.map(l => `<a href="#${l === "New goal" || l === "Saved a note" ? "profile" : "home"}">${esc(l)}</a>`).join("")}</div>` : "";
-    answer.querySelector(".body").innerHTML = formatAnswer(reply.answer) + chips + stepsDetails(reply.steps);
+    answer.querySelector(".body").innerHTML = formatAnswer(reply.answer) + chips + rulesUsed(reply.answer) + stepsDetails(reply.steps);
   } catch (error) {
     answer.querySelector(".body").innerHTML = `<p class="err">${esc(error.message)}</p>`;
   } finally {

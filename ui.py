@@ -348,17 +348,13 @@ def rule_chip(rule):
     return f'<span class="rule" title="{html.escape(f"{rule} · {name}: {text} ({source})")}">{rule}</span>'
 
 
-def with_rule_chips(text):
-    """Turn [R1, L1] in the coach's text into rule chips. The text must already be safe HTML."""
-    return facts_cited.sub(lambda found: "".join(rule_chip(r.strip()) for r in found.group(1).split(",")), text)
-
-
 facts_cited = re.compile(r"\s?\[([A-Z]\d(?:\s*,\s*[A-Z]\d)*)\]")
 
 
 def coach_text(text):
-    """The coach's reply as safe Markdown with rule chips (for st.markdown with unsafe_allow_html)."""
-    return with_rule_chips(plain(html.escape(text, quote=False)))
+    """The coach's reply as safe Markdown (for st.markdown with unsafe_allow_html). The rule IDs it
+    cites, like [L1], are left out of the text; rules_used() lists them underneath instead."""
+    return plain(html.escape(facts_cited.sub("", text), quote=False))
 
 
 def rules_used(text):
